@@ -439,9 +439,27 @@ function renderTimeline(replay) {
   const edges=(replay.edges||[]).map(edge=>{const source=workMap.get(edge.source),target=workMap.get(edge.target);if(!source||!target)return'';const visible=source.publicationYear<=state.currentYear&&target.publicationYear<=state.currentYear;const x1=x(source.publicationYear),y1=y(source.branchId),x2=x(target.publicationYear),y2=y(target.branchId),cx=(x1+x2)/2;return `<path class="citation-edge ${edge.type==='related'?'bridge':''}" style="opacity:${visible ? (state.mode === 'debate' && edge.type !== 'related' ? .25 : 1) : 0}" d="M${x1} ${y1} C${cx} ${y1},${cx} ${y2},${x2} ${y2}"/>`;}).join('');
   const nodes=replay.works.map((work,index)=>{const offset=((index%5)-2)*8,px=x(work.publicationYear),py=y(work.branchId)+offset,size=nodeWeight(work,state.mode),future=work.publicationYear>state.currentYear,signal=state.mode==='debate'?work.debateSignal:work.normalizedImpact,dimmed=signal<.45,branch=replay.branches.find(b=>b.id===work.branchId),color=getBranchColor(branch,replay.branches.indexOf(branch),replay),shape=nodeShape(work.workType,px,py,size,color);return `<g class="work-node ${future?'hidden-future':''} ${dimmed?'dimmed':''}" data-work-id="${work.id}" style="opacity:${future ? .03 : nodeOpacity(work,state.mode)}"><title>${escapeHtml(work.title)}</title>${shape}${work.updateStatus||work.isRetracted?`<path d="M${px+size*.55} ${py-size*.7}h5l-2.5 4.5Z" fill="#ff776e"/>`:''}</g>`;}).join('');
   const markers=replay.events.map(event=>{const px=x(event.year),visible=event.year<=state.currentYear,color=event.eventType==='correction'?'#ff776e':event.eventType==='challenge'?palette[2]:palette[0];return `<g class="event-marker" data-svg-event="${event.id}" style="opacity:${visible?1:.13}"><line x1="${px}" y1="${margin.top-10}" x2="${px}" y2="${height-margin.bottom}" stroke="${color}"/><circle cx="${px}" cy="${margin.top-22}" r="4" fill="${color}"/>${event.id===state.selectedEventId&&visible?`<circle class="event-ring" cx="${px}" cy="${margin.top-22}" r="9" stroke="${color}"/>`:''}${event.id===state.selectedEventId?`<text x="${px+7}" y="${margin.top-18}">${escapeHtml(eventTypeLabel(event.eventType))}</text>`:''}</g>`;}).join('');
-  const playX=x(state.currentYear),playhead=`<line class="playhead" x1="${playX}" y1="${margin.top-40}" x2="${playX}" y2="${height-margin.bottom}"/><circle class="playhead-dot" cx="${playX}" cy="${height-margin.bottom}" r="3"/>`;
+  const playX=x(state.currentYear),playhead=`<g class="playhead-drag" data-playhead><line class="playhead" x1="${playX}" y1="${margin.top-40}" x2="${playX}" y2="${height-margin.bottom}"/><circle class="playhead-dot" cx="${playX}" cy="${height-margin.bottom}" r="3"/><rect x="${playX-7}" y="${margin.top-48}" width="14" height="${height-margin.bottom-margin.top+54}" fill="transparent" pointer-events="all"/></g>`;
   svg.innerHTML=`${guides}${axis}${edges}${markers}${nodes}${playhead}`;
-  svg.querySelectorAll('[data-work-id]').forEach(node=>node.addEventListener('click',()=>openWorkDrawer(node.dataset.workId)));svg.querySelectorAll('[data-svg-event]').forEach(marker=>marker.addEventListener('click',()=>selectEvent(marker.dataset.svgEvent,true)));
+  svg.querySelectorAll('[data-work-id]').forEach(node=>node.addEventListener('click',()=>openWorkDrawer(node.dataset.workId)));svg.querySelectorAll('[data-svg-event]').forEach(marker=>marker.addEventListener('click',()=>selectEvent(marker.dataset.svgEvent,true)));bindPlayheadDrag(svg,replay,margin,plotW);
+}
+
+function bindPlayheadDrag(svg,replay,margin,plotW){
+  svg.querySelector('[data-playhead]')?.addEventListener('pointerdown',(down)=>{
+    if(down.button!==0)return;
+    down.preventDefault();
+    pausePlayback();
+    const drag=(event)=>{
+      const box=svg.getBoundingClientRect();
+      const ratio=(event.clientX-box.left-margin.left)/plotW;
+      state.currentYear=clamp(replay.startYear+ratio*(replay.endYear-replay.startYear),replay.startYear,replay.endYear);
+      updateReplayUI();
+    };
+    const release=()=>{document.removeEventListener('pointermove',drag);document.removeEventListener('pointerup',release);document.removeEventListener('pointercancel',release);};
+    document.addEventListener('pointermove',drag);
+    document.addEventListener('pointerup',release);
+    document.addEventListener('pointercancel',release);
+  });
 }
 
 function nodeShape(type,x,y,size,color){if(type==='clinical')return`<rect x="${x-size}" y="${y-size*.68}" width="${size*2}" height="${size*1.36}" rx="${size*.45}" fill="${color}"/>`;if(type==='review')return`<path d="M${x} ${y-size} L${x+size} ${y} L${x} ${y+size} L${x-size} ${y}Z" fill="${color}"/>`;if(type==='resource'){const points=Array.from({length:6},(_,i)=>{const a=Math.PI/3*i-Math.PI/2;return`${x+Math.cos(a)*size},${y+Math.sin(a)*size}`}).join(' ');return`<polygon points="${points}" fill="${color}"/>`;}return`<circle cx="${x}" cy="${y}" r="${size}" fill="${color}"/>`;}
