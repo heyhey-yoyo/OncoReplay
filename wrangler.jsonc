@@ -19,7 +19,7 @@
     {
       "binding": "DB",
       "database_name": "oncoreplay-db",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "database_id": "803f03a6-b627-494b-8cd9-bcca30939071",
       "migrations_dir": "migrations"
     }
   ],
