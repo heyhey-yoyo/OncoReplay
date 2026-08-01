@@ -77,6 +77,19 @@ function candidatePriority(topic, work) {
   return similarity * 0.55 + layer + Math.min(0.2, Math.log1p(work.citedByCount || 0) / 60);
 }
 
+// 主题词亲和过滤：候选论文必须在标题/摘要/主题/关键词中出现至少一个主题词，
+// 否则剔除。OpenAlex 的 search 会命中全文——短主题（如基因符号 VAX2）可能带回
+// 只在正文里顺带提及该词的旁路论文，它们的参考文献/被引文献会把无关领域
+// （如 FADD 凋亡文献）成批拖进候选池。纯中文主题没有可比的拉丁词元，过滤自动关闭。
+export function topicAffinity(topic) {
+  const tokens = [...tokenCounts(topic).keys()];
+  if (!tokens.length) return () => true;
+  return (work) => {
+    const text = tokenCounts(makeWorkText(work));
+    return tokens.some((token) => text.has(token));
+  };
+}
+
 export function namespaceAnalysis(rawAnalysis, replayId) {
   const branchPrefix = `br-${String(replayId).slice(0, 12)}`;
   const branchIdMap = new Map(rawAnalysis.branches.map((branch) => [branch.id, `${branchPrefix}-${branch.id}`]));
@@ -104,7 +117,8 @@ async function fetchWorksStage(env, body) {
     endYear: context.replay.end_year,
     perPage: Math.min(100, maxWorks),
   });
-  const seeds = result.works.filter((work) => work.id);
+  const affinity = topicAffinity(topic);
+  const seeds = result.works.filter((work) => work.id && affinity(work));
   if (!seeds.length) throw Object.assign(new Error('OpenAlex did not return any matching works.'), { code: 'NO_WORKS_FOUND', fatal: true });
 
   const coreSeeds = [...seeds]
@@ -122,7 +136,7 @@ async function fetchWorksStage(env, body) {
     }),
   ]);
   const byId = new Map();
-  for (const work of [...seeds, ...references, ...related, ...citing]) {
+  for (const work of [...seeds, ...references.filter(affinity), ...related.filter(affinity), ...citing.filter(affinity)]) {
     if (!work.id) continue;
     if (context.replay.start_year && work.publicationYear && work.publicationYear < context.replay.start_year) continue;
     if (context.replay.end_year && work.publicationYear && work.publicationYear > context.replay.end_year) continue;

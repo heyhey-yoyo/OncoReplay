@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { namespaceAnalysis, validateChunk, validateNarrative } from '../src/worker/lib/pipeline.js';
+import { namespaceAnalysis, topicAffinity, validateChunk, validateNarrative } from '../src/worker/lib/pipeline.js';
 
 test('community IDs are namespaced per replay', () => {
   const raw = {
@@ -61,4 +61,22 @@ test('chunk validation requires full branch coverage', () => {
   const works = [];
   const payload = { branches: [{ branch_id: 'b1', label: '机制', description: '机制研究分支。' }] };
   assert.throws(() => validateChunk(payload, 'branches', [], works, ['b1', 'b2']), /omitted one or more supplied branches/);
+});
+
+test('topicAffinity excludes fulltext-only strays for a gene-symbol topic', () => {
+  const gate = topicAffinity('VAX2');
+  assert.equal(gate({ title: 'FADD, a novel death domain-containing protein', abstract: 'Fas cytoplasmic domain, yeast two-hybrid, apoptosis.', topics: [], keywords: [] }), false);
+  assert.equal(gate({ title: 'The homeodomain protein Vax2 patterns the eye', abstract: '', topics: [], keywords: [] }), true);
+  assert.equal(gate({ title: 'Retinal development', abstract: '', topics: [{ displayName: 'Vax2 gene' }], keywords: [] }), true);
+});
+
+test('topicAffinity is disabled for pure CJK topics', () => {
+  const gate = topicAffinity('肺癌 免疫治疗');
+  assert.equal(gate({ title: 'anything at all', abstract: '', topics: [], keywords: [] }), true);
+});
+
+test('topicAffinity accepts any shared token for multi-token topics', () => {
+  const gate = topicAffinity('YAP1 and EGFR-TKI resistance');
+  assert.equal(gate({ title: 'Acquired resistance to EGFR-TKI in NSCLC', abstract: '', topics: [], keywords: [] }), true);
+  assert.equal(gate({ title: 'A tale of two pathways', abstract: 'No overlapping vocabulary here.', topics: [], keywords: [] }), false);
 });
