@@ -361,12 +361,12 @@ async function runNarrativeAI(env, narrative, priorError = '') {
     works: suppliedWorks,
     prior_validation_error: priorError || undefined,
   });
-  const model = env.AI_MODEL || '@cf/meta/llama-3.1-8b-instruct-fast';
+  const model = env.AI_MODEL || '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
   const result = await env.AI.run(model, {
     messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
     response_format: { type: 'json_schema', json_schema: NARRATIVE_SCHEMA },
     temperature: 0.2,
-    max_tokens: 3500,
+    max_tokens: 8192,
   });
   return { model, payload: validateNarrative(parseAiResponse(result), narrative.branches, narrative.events, narrative.works) };
 }
@@ -384,7 +384,7 @@ async function narrativeStage(env, body) {
   const runId = crypto.randomUUID();
   if (!output) {
     await env.DB.prepare(`INSERT INTO ai_runs (id,replay_id,task_type,model,input_hash,output_json,status,validation_errors_json,created_at) VALUES (?,?,?,?,?,NULL,'fallback',?,?)`)
-      .bind(runId, body.replayId, 'GENERATE_NARRATIVE', env.AI_MODEL || '@cf/meta/llama-3.1-8b-instruct-fast', inputHash, JSON.stringify([validationError]), nowIso()).run();
+      .bind(runId, body.replayId, 'GENERATE_NARRATIVE', env.AI_MODEL || '@cf/meta/llama-3.3-70b-instruct-fp8-fast', inputHash, JSON.stringify([validationError]), nowIso()).run();
     return;
   }
   await env.DB.prepare(`INSERT INTO ai_runs (id,replay_id,task_type,model,input_hash,output_json,status,validation_errors_json,created_at) VALUES (?,?,?,?,?,?,'complete','[]',?)`)
