@@ -1,0 +1,1535 @@
+{
+  "schemaVersion": "1.0",
+  "slug": "kras-g12d",
+  "title": "KRAS G12D inhibitors in pancreatic cancer",
+  "subtitle": "An illustrative replay of how mechanism, chemistry, resistance, and clinical translation could be organized.",
+  "originalQuery": "KRAS G12D inhibitors in pancreatic cancer",
+  "startYear": 2006,
+  "endYear": 2026,
+  "generatedAt": "2026-08-01T00:00:00Z",
+  "dataStatus": "illustrative-demo",
+  "disclaimer": "This fixed dataset is designed to demonstrate the product experience. Titles, identifiers, metrics, and events are illustrative and must not be used as a scientific reference.",
+  "branches": [
+    {
+      "id": "mechanism",
+      "label": "Molecular mechanism",
+      "shortLabel": "Mechanism",
+      "description": "Structural biology, signaling dependencies, and allele-specific vulnerabilities.",
+      "colorToken": "cyan",
+      "sortOrder": 0
+    },
+    {
+      "id": "chemistry",
+      "label": "Drug discovery",
+      "shortLabel": "Drug discovery",
+      "description": "Compound design, selectivity, delivery, and pharmacology.",
+      "colorToken": "violet",
+      "sortOrder": 1
+    },
+    {
+      "id": "resistance",
+      "label": "Resistance & combinations",
+      "shortLabel": "Resistance",
+      "description": "Adaptive signaling, acquired resistance, and combination strategies.",
+      "colorToken": "amber",
+      "sortOrder": 2
+    },
+    {
+      "id": "translation",
+      "label": "Clinical translation",
+      "shortLabel": "Translation",
+      "description": "Biomarkers, trials, patient selection, and translational evidence.",
+      "colorToken": "green",
+      "sortOrder": 3
+    }
+  ],
+  "works": [
+    {
+      "id": "work-01",
+      "openalexId": "DEMO-W100001",
+      "title": "Allele-specific signaling dependencies in KRAS G12D models",
+      "publicationDate": "2006-01-01",
+      "publicationYear": 2006,
+      "workType": "basic",
+      "citedByCount": 592,
+      "branchId": "mechanism",
+      "authors": [
+        "Research Group A",
+        "Collaborator 1"
+      ],
+      "sourceName": "Cancer Discovery",
+      "doi": "10.0000/oncoreplay.demo.001",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.91,
+      "debateSignal": 0.15,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-02",
+      "openalexId": "DEMO-W100002",
+      "title": "Structural features reveal a switch-pocket opportunity",
+      "publicationDate": "2008-04-08",
+      "publicationYear": 2008,
+      "workType": "basic",
+      "citedByCount": 535,
+      "branchId": "mechanism",
+      "authors": [
+        "Research Group A",
+        "Collaborator 2"
+      ],
+      "sourceName": "Cancer Discovery",
+      "doi": "10.0000/oncoreplay.demo.002",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.84,
+      "debateSignal": 0.32,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-03",
+      "openalexId": "DEMO-W100003",
+      "title": "KRAS G12D rewires nucleotide cycling in pancreatic cancer",
+      "publicationDate": "2010-07-15",
+      "publicationYear": 2010,
+      "workType": "review",
+      "citedByCount": 478,
+      "branchId": "mechanism",
+      "authors": [
+        "Research Group A",
+        "Collaborator 3"
+      ],
+      "sourceName": "Cancer Discovery",
+      "doi": "10.0000/oncoreplay.demo.003",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.78,
+      "debateSignal": 0.49,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-04",
+      "openalexId": "DEMO-W100004",
+      "title": "Lineage context shapes dependency on mutant KRAS",
+      "publicationDate": "2011-10-22",
+      "publicationYear": 2011,
+      "workType": "basic",
+      "citedByCount": 443,
+      "branchId": "mechanism",
+      "authors": [
+        "Research Group A",
+        "Collaborator 4"
+      ],
+      "sourceName": "Cancer Discovery",
+      "doi": "10.0000/oncoreplay.demo.004",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.74,
+      "debateSignal": 0.66,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-05",
+      "openalexId": "DEMO-W100005",
+      "title": "Proteomic mapping of early pathway adaptation",
+      "publicationDate": "2013-01-03",
+      "publicationYear": 2013,
+      "workType": "resource",
+      "citedByCount": 386,
+      "branchId": "mechanism",
+      "authors": [
+        "Research Group A",
+        "Collaborator 5"
+      ],
+      "sourceName": "Cancer Discovery",
+      "doi": "10.0000/oncoreplay.demo.005",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.68,
+      "debateSignal": 0.83,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-06",
+      "openalexId": "DEMO-W100006",
+      "title": "Membrane organization controls mutant KRAS output",
+      "publicationDate": "2015-04-10",
+      "publicationYear": 2015,
+      "workType": "basic",
+      "citedByCount": 329,
+      "branchId": "mechanism",
+      "authors": [
+        "Research Group A",
+        "Collaborator 6"
+      ],
+      "sourceName": "Cancer Discovery",
+      "doi": "10.0000/oncoreplay.demo.006",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.62,
+      "debateSignal": 0.3,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-07",
+      "openalexId": "DEMO-W100007",
+      "title": "Organoid models expose context-dependent vulnerabilities",
+      "publicationDate": "2016-07-17",
+      "publicationYear": 2016,
+      "workType": "basic",
+      "citedByCount": 294,
+      "branchId": "mechanism",
+      "authors": [
+        "Research Group A",
+        "Collaborator 7"
+      ],
+      "sourceName": "Cancer Discovery",
+      "doi": "10.0000/oncoreplay.demo.007",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.58,
+      "debateSignal": 0.47,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-08",
+      "openalexId": "DEMO-W100008",
+      "title": "Single-cell profiling resolves heterogeneous signaling states",
+      "publicationDate": "2018-10-24",
+      "publicationYear": 2018,
+      "workType": "basic",
+      "citedByCount": 237,
+      "branchId": "mechanism",
+      "authors": [
+        "Research Group A",
+        "Collaborator 8"
+      ],
+      "sourceName": "Cancer Discovery",
+      "doi": "10.0000/oncoreplay.demo.008",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.51,
+      "debateSignal": 0.64,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-09",
+      "openalexId": "DEMO-W100009",
+      "title": "Metabolic stress amplifies KRAS G12D dependency",
+      "publicationDate": "2020-01-05",
+      "publicationYear": 2020,
+      "workType": "review",
+      "citedByCount": 180,
+      "branchId": "mechanism",
+      "authors": [
+        "Research Group A",
+        "Collaborator 9"
+      ],
+      "sourceName": "Cancer Discovery",
+      "doi": "10.0000/oncoreplay.demo.009",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.45,
+      "debateSignal": 0.81,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-10",
+      "openalexId": "DEMO-W100010",
+      "title": "Network analysis identifies a conserved effector module",
+      "publicationDate": "2022-04-12",
+      "publicationYear": 2022,
+      "workType": "basic",
+      "citedByCount": 123,
+      "branchId": "mechanism",
+      "authors": [
+        "Research Group A",
+        "Collaborator 10"
+      ],
+      "sourceName": "Cancer Discovery",
+      "doi": "10.0000/oncoreplay.demo.010",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.39,
+      "debateSignal": 0.28,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-11",
+      "openalexId": "DEMO-W100011",
+      "title": "Fragment screening identifies a G12D-selective chemical series",
+      "publicationDate": "2012-03-01",
+      "publicationYear": 2012,
+      "workType": "basic",
+      "citedByCount": 467,
+      "branchId": "chemistry",
+      "authors": [
+        "Research Group B",
+        "Collaborator 1"
+      ],
+      "sourceName": "Nature Cancer",
+      "doi": "10.0000/oncoreplay.demo.011",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.77,
+      "debateSignal": 0.28,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-12",
+      "openalexId": "DEMO-W100012",
+      "title": "Structure-guided optimization improves mutant selectivity",
+      "publicationDate": "2014-06-08",
+      "publicationYear": 2014,
+      "workType": "basic",
+      "citedByCount": 410,
+      "branchId": "chemistry",
+      "authors": [
+        "Research Group B",
+        "Collaborator 2"
+      ],
+      "sourceName": "Nature Cancer",
+      "doi": "10.0000/oncoreplay.demo.012",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.71,
+      "debateSignal": 0.45,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-13",
+      "openalexId": "DEMO-W100013",
+      "title": "An oral inhibitor achieves sustained pathway suppression",
+      "publicationDate": "2016-09-15",
+      "publicationYear": 2016,
+      "workType": "basic",
+      "citedByCount": 353,
+      "branchId": "chemistry",
+      "authors": [
+        "Research Group B",
+        "Collaborator 3"
+      ],
+      "sourceName": "Nature Cancer",
+      "doi": "10.0000/oncoreplay.demo.013",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.64,
+      "debateSignal": 0.62,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-14",
+      "openalexId": "DEMO-W100014",
+      "title": "Covalent and non-covalent strategies diverge",
+      "publicationDate": "2018-12-22",
+      "publicationYear": 2018,
+      "workType": "basic",
+      "citedByCount": 296,
+      "branchId": "chemistry",
+      "authors": [
+        "Research Group B",
+        "Collaborator 4"
+      ],
+      "sourceName": "Nature Cancer",
+      "doi": "10.0000/oncoreplay.demo.014",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.58,
+      "debateSignal": 0.79,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-15",
+      "openalexId": "DEMO-W100015",
+      "title": "Pharmacokinetic tuning expands tumor exposure",
+      "publicationDate": "2020-03-03",
+      "publicationYear": 2020,
+      "workType": "resource",
+      "citedByCount": 239,
+      "branchId": "chemistry",
+      "authors": [
+        "Research Group B",
+        "Collaborator 5"
+      ],
+      "sourceName": "Nature Cancer",
+      "doi": "10.0000/oncoreplay.demo.015",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.52,
+      "debateSignal": 0.26,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-16",
+      "openalexId": "DEMO-W100016",
+      "title": "Macrocyclic design improves intracellular engagement",
+      "publicationDate": "2021-06-10",
+      "publicationYear": 2021,
+      "workType": "basic",
+      "citedByCount": 204,
+      "branchId": "chemistry",
+      "authors": [
+        "Research Group B",
+        "Collaborator 6"
+      ],
+      "sourceName": "Nature Cancer",
+      "doi": "10.0000/oncoreplay.demo.016",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.48,
+      "debateSignal": 0.43,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-17",
+      "openalexId": "DEMO-W100017",
+      "title": "New chemical matter targets the inactive nucleotide state",
+      "publicationDate": "2022-09-17",
+      "publicationYear": 2022,
+      "workType": "basic",
+      "citedByCount": 169,
+      "branchId": "chemistry",
+      "authors": [
+        "Research Group B",
+        "Collaborator 7"
+      ],
+      "sourceName": "Nature Cancer",
+      "doi": "10.0000/oncoreplay.demo.017",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.44,
+      "debateSignal": 0.6,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-18",
+      "openalexId": "DEMO-W100018",
+      "title": "Delivery engineering broadens accessible tumor models",
+      "publicationDate": "2023-12-24",
+      "publicationYear": 2023,
+      "workType": "basic",
+      "citedByCount": 134,
+      "branchId": "chemistry",
+      "authors": [
+        "Research Group B",
+        "Collaborator 8"
+      ],
+      "sourceName": "Nature Cancer",
+      "doi": "10.0000/oncoreplay.demo.018",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.4,
+      "debateSignal": 0.77,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-19",
+      "openalexId": "DEMO-W100019",
+      "title": "Next-generation compounds address potency and selectivity",
+      "publicationDate": "2024-03-05",
+      "publicationYear": 2024,
+      "workType": "basic",
+      "citedByCount": 99,
+      "branchId": "chemistry",
+      "authors": [
+        "Research Group B",
+        "Collaborator 9"
+      ],
+      "sourceName": "Nature Cancer",
+      "doi": "10.0000/oncoreplay.demo.019",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.36,
+      "debateSignal": 0.24,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-20",
+      "openalexId": "DEMO-W100020",
+      "title": "Parallel discovery programs accelerate the field",
+      "publicationDate": "2025-06-12",
+      "publicationYear": 2025,
+      "workType": "basic",
+      "citedByCount": 64,
+      "branchId": "chemistry",
+      "authors": [
+        "Research Group B",
+        "Collaborator 10"
+      ],
+      "sourceName": "Nature Cancer",
+      "doi": "10.0000/oncoreplay.demo.020",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.32,
+      "debateSignal": 0.41,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-21",
+      "openalexId": "DEMO-W100021",
+      "title": "Feedback activation limits depth of pathway inhibition",
+      "publicationDate": "2015-05-01",
+      "publicationYear": 2015,
+      "workType": "basic",
+      "citedByCount": 408,
+      "branchId": "resistance",
+      "authors": [
+        "Research Group C",
+        "Collaborator 1"
+      ],
+      "sourceName": "Cancer Research",
+      "doi": "10.0000/oncoreplay.demo.021",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.7,
+      "debateSignal": 0.41,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-22",
+      "openalexId": "DEMO-W100022",
+      "title": "Combinatorial screening nominates adaptive dependencies",
+      "publicationDate": "2017-08-08",
+      "publicationYear": 2017,
+      "workType": "basic",
+      "citedByCount": 351,
+      "branchId": "resistance",
+      "authors": [
+        "Research Group C",
+        "Collaborator 2"
+      ],
+      "sourceName": "Cancer Research",
+      "doi": "10.0000/oncoreplay.demo.022",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.64,
+      "debateSignal": 0.58,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-23",
+      "openalexId": "DEMO-W100023",
+      "title": "Acquired resistance emerges through pathway reactivation",
+      "publicationDate": "2018-11-15",
+      "publicationYear": 2018,
+      "workType": "review",
+      "citedByCount": 316,
+      "branchId": "resistance",
+      "authors": [
+        "Research Group C",
+        "Collaborator 3"
+      ],
+      "sourceName": "Cancer Research",
+      "doi": "10.0000/oncoreplay.demo.023",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.6,
+      "debateSignal": 0.75,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-24",
+      "openalexId": "DEMO-W100024",
+      "title": "Lineage-specific bypass signaling creates divergent branches",
+      "publicationDate": "2019-02-22",
+      "publicationYear": 2019,
+      "workType": "basic",
+      "citedByCount": 281,
+      "branchId": "resistance",
+      "authors": [
+        "Research Group C",
+        "Collaborator 4"
+      ],
+      "sourceName": "Cancer Research",
+      "doi": "10.0000/oncoreplay.demo.024",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.56,
+      "debateSignal": 0.22,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-25",
+      "openalexId": "DEMO-W100025",
+      "title": "Vertical pathway blockade delays rebound",
+      "publicationDate": "2020-05-03",
+      "publicationYear": 2020,
+      "workType": "review",
+      "citedByCount": 246,
+      "branchId": "resistance",
+      "authors": [
+        "Research Group C",
+        "Collaborator 5"
+      ],
+      "sourceName": "Cancer Research",
+      "doi": "10.0000/oncoreplay.demo.025",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.52,
+      "debateSignal": 0.39,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-26",
+      "openalexId": "DEMO-W100026",
+      "title": "Immune remodeling accompanies targeted inhibition",
+      "publicationDate": "2021-08-10",
+      "publicationYear": 2021,
+      "workType": "basic",
+      "citedByCount": 211,
+      "branchId": "resistance",
+      "authors": [
+        "Research Group C",
+        "Collaborator 6"
+      ],
+      "sourceName": "Cancer Research",
+      "doi": "10.0000/oncoreplay.demo.026",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.48,
+      "debateSignal": 0.56,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-27",
+      "openalexId": "DEMO-W100027",
+      "title": "Resistance maps converge on multiple escape routes",
+      "publicationDate": "2022-11-17",
+      "publicationYear": 2022,
+      "workType": "basic",
+      "citedByCount": 176,
+      "branchId": "resistance",
+      "authors": [
+        "Research Group C",
+        "Collaborator 7"
+      ],
+      "sourceName": "Cancer Research",
+      "doi": "10.0000/oncoreplay.demo.027",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.45,
+      "debateSignal": 0.73,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-28",
+      "openalexId": "DEMO-W100028",
+      "title": "Temporal dosing reshapes adaptive signaling",
+      "publicationDate": "2023-02-24",
+      "publicationYear": 2023,
+      "workType": "basic",
+      "citedByCount": 141,
+      "branchId": "resistance",
+      "authors": [
+        "Research Group C",
+        "Collaborator 8"
+      ],
+      "sourceName": "Cancer Research",
+      "doi": "10.0000/oncoreplay.demo.028",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": {
+        "type": "correction",
+        "label": "Correction check required",
+        "source": "Demo status"
+      },
+      "normalizedImpact": 0.41,
+      "debateSignal": 0.96,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-29",
+      "openalexId": "DEMO-W100029",
+      "title": "Patient-derived models expose heterogeneous escape states",
+      "publicationDate": "2024-05-05",
+      "publicationYear": 2024,
+      "workType": "review",
+      "citedByCount": 106,
+      "branchId": "resistance",
+      "authors": [
+        "Research Group C",
+        "Collaborator 9"
+      ],
+      "sourceName": "Cancer Research",
+      "doi": "10.0000/oncoreplay.demo.029",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.37,
+      "debateSignal": 0.37,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-30",
+      "openalexId": "DEMO-W100030",
+      "title": "Cross-study synthesis highlights unresolved resistance questions",
+      "publicationDate": "2025-08-12",
+      "publicationYear": 2025,
+      "workType": "review",
+      "citedByCount": 71,
+      "branchId": "resistance",
+      "authors": [
+        "Research Group C",
+        "Collaborator 10"
+      ],
+      "sourceName": "Cancer Research",
+      "doi": "10.0000/oncoreplay.demo.030",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.33,
+      "debateSignal": 0.54,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-31",
+      "openalexId": "DEMO-W100031",
+      "title": "Translational biomarkers connect target engagement to response",
+      "publicationDate": "2017-07-01",
+      "publicationYear": 2017,
+      "workType": "clinical",
+      "citedByCount": 371,
+      "branchId": "translation",
+      "authors": [
+        "Research Group D",
+        "Collaborator 1"
+      ],
+      "sourceName": "Clinical Cancer Research",
+      "doi": "10.0000/oncoreplay.demo.031",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.66,
+      "debateSignal": 0.54,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-32",
+      "openalexId": "DEMO-W100032",
+      "title": "First-in-human study opens for a KRAS G12D program",
+      "publicationDate": "2021-10-08",
+      "publicationYear": 2021,
+      "workType": "clinical",
+      "citedByCount": 270,
+      "branchId": "translation",
+      "authors": [
+        "Research Group D",
+        "Collaborator 2"
+      ],
+      "sourceName": "Clinical Cancer Research",
+      "doi": "10.0000/oncoreplay.demo.032",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.55,
+      "debateSignal": 0.71,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-33",
+      "openalexId": "DEMO-W100033",
+      "title": "Early clinical pharmacology reports dose-dependent engagement",
+      "publicationDate": "2022-01-15",
+      "publicationYear": 2022,
+      "workType": "clinical",
+      "citedByCount": 235,
+      "branchId": "translation",
+      "authors": [
+        "Research Group D",
+        "Collaborator 3"
+      ],
+      "sourceName": "Clinical Cancer Research",
+      "doi": "10.0000/oncoreplay.demo.033",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.51,
+      "debateSignal": 0.18,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-34",
+      "openalexId": "DEMO-W100034",
+      "title": "Combination cohorts expand into pancreatic cancer",
+      "publicationDate": "2023-04-22",
+      "publicationYear": 2023,
+      "workType": "clinical",
+      "citedByCount": 200,
+      "branchId": "translation",
+      "authors": [
+        "Research Group D",
+        "Collaborator 4"
+      ],
+      "sourceName": "Clinical Cancer Research",
+      "doi": "10.0000/oncoreplay.demo.034",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.47,
+      "debateSignal": 0.35,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-35",
+      "openalexId": "DEMO-W100035",
+      "title": "Circulating tumor DNA tracks molecular response",
+      "publicationDate": "2023-07-03",
+      "publicationYear": 2023,
+      "workType": "clinical",
+      "citedByCount": 187,
+      "branchId": "translation",
+      "authors": [
+        "Research Group D",
+        "Collaborator 5"
+      ],
+      "sourceName": "Clinical Cancer Research",
+      "doi": "10.0000/oncoreplay.demo.035",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.46,
+      "debateSignal": 0.52,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-36",
+      "openalexId": "DEMO-W100036",
+      "title": "Clinical activity prompts broader genotype screening",
+      "publicationDate": "2024-10-10",
+      "publicationYear": 2024,
+      "workType": "clinical",
+      "citedByCount": 152,
+      "branchId": "translation",
+      "authors": [
+        "Research Group D",
+        "Collaborator 6"
+      ],
+      "sourceName": "Clinical Cancer Research",
+      "doi": "10.0000/oncoreplay.demo.036",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.42,
+      "debateSignal": 0.69,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-37",
+      "openalexId": "DEMO-W100037",
+      "title": "Safety and dosing constraints reshape development strategy",
+      "publicationDate": "2024-01-17",
+      "publicationYear": 2024,
+      "workType": "clinical",
+      "citedByCount": 139,
+      "branchId": "translation",
+      "authors": [
+        "Research Group D",
+        "Collaborator 7"
+      ],
+      "sourceName": "Clinical Cancer Research",
+      "doi": "10.0000/oncoreplay.demo.037",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.4,
+      "debateSignal": 0.16,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-38",
+      "openalexId": "DEMO-W100038",
+      "title": "Multiple programs enter early-stage clinical evaluation",
+      "publicationDate": "2025-04-24",
+      "publicationYear": 2025,
+      "workType": "clinical",
+      "citedByCount": 104,
+      "branchId": "translation",
+      "authors": [
+        "Research Group D",
+        "Collaborator 8"
+      ],
+      "sourceName": "Clinical Cancer Research",
+      "doi": "10.0000/oncoreplay.demo.038",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.37,
+      "debateSignal": 0.33,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-39",
+      "openalexId": "DEMO-W100039",
+      "title": "Biomarker refinement narrows likely responder populations",
+      "publicationDate": "2025-07-05",
+      "publicationYear": 2025,
+      "workType": "clinical",
+      "citedByCount": 91,
+      "branchId": "translation",
+      "authors": [
+        "Research Group D",
+        "Collaborator 9"
+      ],
+      "sourceName": "Clinical Cancer Research",
+      "doi": "10.0000/oncoreplay.demo.039",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.35,
+      "debateSignal": 0.5,
+      "sourceUrl": "https://openalex.org/"
+    },
+    {
+      "id": "work-40",
+      "openalexId": "DEMO-W100040",
+      "title": "Randomized development plans begin to emerge",
+      "publicationDate": "2026-10-12",
+      "publicationYear": 2026,
+      "workType": "clinical",
+      "citedByCount": 56,
+      "branchId": "translation",
+      "authors": [
+        "Research Group D",
+        "Collaborator 10"
+      ],
+      "sourceName": "Clinical Cancer Research",
+      "doi": "10.0000/oncoreplay.demo.040",
+      "pmid": null,
+      "abstract": "Illustrative fixed-data record for the OncoReplay interaction prototype. It demonstrates source-bound event rendering, evidence drawers, and timeline behavior; it is not a scientific citation.",
+      "isRetracted": false,
+      "updateStatus": null,
+      "normalizedImpact": 0.31,
+      "debateSignal": 0.67,
+      "sourceUrl": "https://openalex.org/"
+    }
+  ],
+  "edges": [
+    {
+      "source": "work-01",
+      "target": "work-02",
+      "type": "cites"
+    },
+    {
+      "source": "work-02",
+      "target": "work-03",
+      "type": "cites"
+    },
+    {
+      "source": "work-03",
+      "target": "work-04",
+      "type": "cites"
+    },
+    {
+      "source": "work-01",
+      "target": "work-04",
+      "type": "cites"
+    },
+    {
+      "source": "work-04",
+      "target": "work-05",
+      "type": "cites"
+    },
+    {
+      "source": "work-05",
+      "target": "work-06",
+      "type": "cites"
+    },
+    {
+      "source": "work-03",
+      "target": "work-06",
+      "type": "cites"
+    },
+    {
+      "source": "work-06",
+      "target": "work-07",
+      "type": "cites"
+    },
+    {
+      "source": "work-07",
+      "target": "work-08",
+      "type": "cites"
+    },
+    {
+      "source": "work-05",
+      "target": "work-08",
+      "type": "cites"
+    },
+    {
+      "source": "work-08",
+      "target": "work-09",
+      "type": "cites"
+    },
+    {
+      "source": "work-09",
+      "target": "work-10",
+      "type": "cites"
+    },
+    {
+      "source": "work-07",
+      "target": "work-10",
+      "type": "cites"
+    },
+    {
+      "source": "work-11",
+      "target": "work-12",
+      "type": "cites"
+    },
+    {
+      "source": "work-12",
+      "target": "work-13",
+      "type": "cites"
+    },
+    {
+      "source": "work-13",
+      "target": "work-14",
+      "type": "cites"
+    },
+    {
+      "source": "work-11",
+      "target": "work-14",
+      "type": "cites"
+    },
+    {
+      "source": "work-14",
+      "target": "work-15",
+      "type": "cites"
+    },
+    {
+      "source": "work-15",
+      "target": "work-16",
+      "type": "cites"
+    },
+    {
+      "source": "work-13",
+      "target": "work-16",
+      "type": "cites"
+    },
+    {
+      "source": "work-16",
+      "target": "work-17",
+      "type": "cites"
+    },
+    {
+      "source": "work-17",
+      "target": "work-18",
+      "type": "cites"
+    },
+    {
+      "source": "work-15",
+      "target": "work-18",
+      "type": "cites"
+    },
+    {
+      "source": "work-18",
+      "target": "work-19",
+      "type": "cites"
+    },
+    {
+      "source": "work-19",
+      "target": "work-20",
+      "type": "cites"
+    },
+    {
+      "source": "work-17",
+      "target": "work-20",
+      "type": "cites"
+    },
+    {
+      "source": "work-21",
+      "target": "work-22",
+      "type": "cites"
+    },
+    {
+      "source": "work-22",
+      "target": "work-23",
+      "type": "cites"
+    },
+    {
+      "source": "work-23",
+      "target": "work-24",
+      "type": "cites"
+    },
+    {
+      "source": "work-21",
+      "target": "work-24",
+      "type": "cites"
+    },
+    {
+      "source": "work-24",
+      "target": "work-25",
+      "type": "cites"
+    },
+    {
+      "source": "work-25",
+      "target": "work-26",
+      "type": "cites"
+    },
+    {
+      "source": "work-23",
+      "target": "work-26",
+      "type": "cites"
+    },
+    {
+      "source": "work-26",
+      "target": "work-27",
+      "type": "cites"
+    },
+    {
+      "source": "work-27",
+      "target": "work-28",
+      "type": "cites"
+    },
+    {
+      "source": "work-25",
+      "target": "work-28",
+      "type": "cites"
+    },
+    {
+      "source": "work-28",
+      "target": "work-29",
+      "type": "cites"
+    },
+    {
+      "source": "work-29",
+      "target": "work-30",
+      "type": "cites"
+    },
+    {
+      "source": "work-27",
+      "target": "work-30",
+      "type": "cites"
+    },
+    {
+      "source": "work-31",
+      "target": "work-32",
+      "type": "cites"
+    },
+    {
+      "source": "work-32",
+      "target": "work-33",
+      "type": "cites"
+    },
+    {
+      "source": "work-33",
+      "target": "work-34",
+      "type": "cites"
+    },
+    {
+      "source": "work-31",
+      "target": "work-34",
+      "type": "cites"
+    },
+    {
+      "source": "work-34",
+      "target": "work-35",
+      "type": "cites"
+    },
+    {
+      "source": "work-35",
+      "target": "work-36",
+      "type": "cites"
+    },
+    {
+      "source": "work-33",
+      "target": "work-36",
+      "type": "cites"
+    },
+    {
+      "source": "work-36",
+      "target": "work-37",
+      "type": "cites"
+    },
+    {
+      "source": "work-37",
+      "target": "work-38",
+      "type": "cites"
+    },
+    {
+      "source": "work-35",
+      "target": "work-38",
+      "type": "cites"
+    },
+    {
+      "source": "work-38",
+      "target": "work-39",
+      "type": "cites"
+    },
+    {
+      "source": "work-39",
+      "target": "work-40",
+      "type": "cites"
+    },
+    {
+      "source": "work-37",
+      "target": "work-40",
+      "type": "cites"
+    },
+    {
+      "source": "work-03",
+      "target": "work-11",
+      "type": "bridges"
+    },
+    {
+      "source": "work-07",
+      "target": "work-14",
+      "type": "bridges"
+    },
+    {
+      "source": "work-15",
+      "target": "work-22",
+      "type": "bridges"
+    },
+    {
+      "source": "work-18",
+      "target": "work-31",
+      "type": "bridges"
+    },
+    {
+      "source": "work-23",
+      "target": "work-33",
+      "type": "bridges"
+    },
+    {
+      "source": "work-24",
+      "target": "work-35",
+      "type": "bridges"
+    },
+    {
+      "source": "work-29",
+      "target": "work-37",
+      "type": "bridges"
+    },
+    {
+      "source": "work-20",
+      "target": "work-38",
+      "type": "bridges"
+    },
+    {
+      "source": "work-10",
+      "target": "work-40",
+      "type": "bridges"
+    },
+    {
+      "source": "work-26",
+      "target": "work-36",
+      "type": "bridges"
+    },
+    {
+      "source": "work-28",
+      "target": "work-39",
+      "type": "bridges"
+    },
+    {
+      "source": "work-17",
+      "target": "work-32",
+      "type": "bridges"
+    }
+  ],
+  "events": [
+    {
+      "id": "event-01",
+      "eventType": "birth",
+      "eventDate": "2008-01-01",
+      "year": 2008,
+      "title": "A distinct G12D research cluster takes shape",
+      "summary": "Early mechanism studies begin to connect allele-specific signaling with pancreatic cancer models. The cluster is still small, but its vocabulary and experimental systems become more consistent.",
+      "selectionReason": "The fixed dataset crosses the minimum cluster threshold and begins showing repeated entity overlap.",
+      "branchIds": [
+        "mechanism"
+      ],
+      "sourceWorkIds": [
+        "work-01",
+        "work-02"
+      ],
+      "confidence": 0.73,
+      "requiresReview": false
+    },
+    {
+      "id": "event-02",
+      "eventType": "breakthrough",
+      "eventDate": "2012-06-01",
+      "year": 2012,
+      "title": "Structural ideas create a drug-discovery opening",
+      "summary": "Mechanistic work and emerging structural hypotheses start to converge. The replay marks this as an opening rather than proof that the target is druggable.",
+      "selectionReason": "A mechanism node bridges into the first drug-discovery records.",
+      "branchIds": [
+        "mechanism",
+        "chemistry"
+      ],
+      "sourceWorkIds": [
+        "work-03",
+        "work-11"
+      ],
+      "confidence": 0.78,
+      "requiresReview": false
+    },
+    {
+      "id": "event-03",
+      "eventType": "branching",
+      "eventDate": "2015-04-01",
+      "year": 2015,
+      "title": "The field splits into mechanism and intervention tracks",
+      "summary": "One branch continues mapping signaling context while another emphasizes chemical tractability. The two tracks remain linked, but they begin accumulating different methods and publication venues.",
+      "selectionReason": "Graph communities separate while preserving several cross-branch citation links.",
+      "branchIds": [
+        "mechanism",
+        "chemistry"
+      ],
+      "sourceWorkIds": [
+        "work-06",
+        "work-12",
+        "work-13"
+      ],
+      "confidence": 0.81,
+      "requiresReview": false
+    },
+    {
+      "id": "event-04",
+      "eventType": "challenge",
+      "eventDate": "2017-09-01",
+      "year": 2017,
+      "title": "Adaptive signaling complicates the emerging story",
+      "summary": "Combination screens and feedback studies suggest that pathway suppression may trigger compensatory responses. This is displayed as a machine-detected challenge candidate, not a settled contradiction.",
+      "selectionReason": "High debate signals appear in a newly coherent resistance cluster.",
+      "branchIds": [
+        "resistance"
+      ],
+      "sourceWorkIds": [
+        "work-21",
+        "work-22"
+      ],
+      "confidence": 0.67,
+      "requiresReview": true
+    },
+    {
+      "id": "event-05",
+      "eventType": "breakthrough",
+      "eventDate": "2019-06-01",
+      "year": 2019,
+      "title": "Structure-guided chemistry gains visible momentum",
+      "summary": "Drug-discovery records become denser and more connected to earlier mechanism work. Citation growth accelerates across several related nodes rather than around a single paper.",
+      "selectionReason": "Normalized citation growth and cross-branch connectivity both increase.",
+      "branchIds": [
+        "chemistry",
+        "mechanism"
+      ],
+      "sourceWorkIds": [
+        "work-14",
+        "work-15",
+        "work-18"
+      ],
+      "confidence": 0.83,
+      "requiresReview": false
+    },
+    {
+      "id": "event-06",
+      "eventType": "revival",
+      "eventDate": "2020-10-01",
+      "year": 2020,
+      "title": "Earlier pathway work returns to the center",
+      "summary": "Older mechanism studies regain attention as combination strategies need explanations for feedback and escape. The replay highlights this as a revival signal based on later connections.",
+      "selectionReason": "Older nodes receive a disproportionate share of links from newer resistance work.",
+      "branchIds": [
+        "mechanism",
+        "resistance"
+      ],
+      "sourceWorkIds": [
+        "work-05",
+        "work-08",
+        "work-25"
+      ],
+      "confidence": 0.76,
+      "requiresReview": false
+    },
+    {
+      "id": "event-07",
+      "eventType": "translation",
+      "eventDate": "2021-07-01",
+      "year": 2021,
+      "title": "Clinical translation becomes a separate visible track",
+      "summary": "Early-stage clinical activity appears alongside continuing preclinical optimization. The interface keeps these tracks separate to avoid implying that clinical testing resolves mechanistic uncertainty.",
+      "selectionReason": "Clinical-type records form a persistent branch with target-engagement language.",
+      "branchIds": [
+        "translation",
+        "chemistry"
+      ],
+      "sourceWorkIds": [
+        "work-17",
+        "work-32"
+      ],
+      "confidence": 0.86,
+      "requiresReview": false
+    },
+    {
+      "id": "event-08",
+      "eventType": "breakthrough",
+      "eventDate": "2022-05-01",
+      "year": 2022,
+      "title": "Parallel programs accelerate the replay",
+      "summary": "Mechanism, chemistry, and translational branches all add high-impact nodes within a short interval. The result is a field-wide acceleration rather than a single linear breakthrough.",
+      "selectionReason": "Multiple branches show simultaneous growth in node density and normalized impact.",
+      "branchIds": [
+        "mechanism",
+        "chemistry",
+        "translation"
+      ],
+      "sourceWorkIds": [
+        "work-10",
+        "work-17",
+        "work-31",
+        "work-33"
+      ],
+      "confidence": 0.88,
+      "requiresReview": false
+    },
+    {
+      "id": "event-09",
+      "eventType": "branching",
+      "eventDate": "2023-03-01",
+      "year": 2023,
+      "title": "Combination strategies fan into distinct escape routes",
+      "summary": "Resistance work separates into pathway reactivation, lineage-specific bypass, and immune-context hypotheses. These are exploratory branches and may overlap in real datasets.",
+      "selectionReason": "Resistance nodes form subcommunities with different bridge patterns.",
+      "branchIds": [
+        "resistance",
+        "translation"
+      ],
+      "sourceWorkIds": [
+        "work-24",
+        "work-27",
+        "work-34"
+      ],
+      "confidence": 0.72,
+      "requiresReview": true
+    },
+    {
+      "id": "event-10",
+      "eventType": "challenge",
+      "eventDate": "2024-02-01",
+      "year": 2024,
+      "title": "Dosing and safety constraints reshape expectations",
+      "summary": "Translational records introduce practical constraints that are not visible from potency alone. The replay flags the mismatch between laboratory momentum and clinical feasibility as an interpretive checkpoint.",
+      "selectionReason": "Clinical nodes with constraint language rise while chemistry impact remains high.",
+      "branchIds": [
+        "translation",
+        "chemistry"
+      ],
+      "sourceWorkIds": [
+        "work-19",
+        "work-37"
+      ],
+      "confidence": 0.74,
+      "requiresReview": true
+    },
+    {
+      "id": "event-11",
+      "eventType": "correction",
+      "eventDate": "2024-10-01",
+      "year": 2024,
+      "title": "A source update becomes part of the timeline",
+      "summary": "One record carries a structured correction-check marker. In production, this event must come from Crossref or another structured source and must link to that source directly.",
+      "selectionReason": "A structured update status is present in the demo record.",
+      "branchIds": [
+        "resistance"
+      ],
+      "sourceWorkIds": [
+        "work-28"
+      ],
+      "confidence": 1.0,
+      "requiresReview": true
+    },
+    {
+      "id": "event-12",
+      "eventType": "translation",
+      "eventDate": "2026-01-01",
+      "year": 2026,
+      "title": "The field reaches a crowded but unresolved present",
+      "summary": "Multiple clinical programs, biomarker efforts, and resistance hypotheses now coexist. The current view emphasizes open questions rather than declaring a winner or a scientific consensus.",
+      "selectionReason": "All four branches remain active and no single branch dominates every metric.",
+      "branchIds": [
+        "translation",
+        "resistance",
+        "chemistry"
+      ],
+      "sourceWorkIds": [
+        "work-30",
+        "work-38",
+        "work-39",
+        "work-40"
+      ],
+      "confidence": 0.82,
+      "requiresReview": false
+    }
+  ],
+  "openQuestions": [
+    "Which adaptive escape routes are reproducible across models and patient contexts?",
+    "How should target engagement, dose intensity, and tolerability be compared across programs?",
+    "Which biomarkers separate transient pathway suppression from durable response?"
+  ]
+}
