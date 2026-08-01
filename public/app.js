@@ -122,6 +122,10 @@ function renderHome() {
   document.querySelector('#home-search')?.addEventListener('submit', (event) => { event.preventDefault(); const query=document.querySelector('#home-query').value.trim(); navigate(query ? `/create?query=${encodeURIComponent(query)}` : '/create'); });
 }
 
+function exampleCard(title, span, works, events, copy, path) {
+  return `<article class="card example-card"><div class="card-glow"></div><span class="card-kicker">${L('精选回放','Featured replay')}</span><h3 class="card-title">${escapeHtml(title)}</h3><p class="card-copy">${escapeHtml(copy)}</p><div class="mini-timeline"><i></i><i></i><i></i><i></i><i></i></div><div class="card-stats"><div class="stat"><strong>${escapeHtml(span)}</strong><span>${L('时间线','Timeline')}</span></div><div class="stat"><strong>${escapeHtml(works)}</strong><span>${L('论文','Works')}</span></div><div class="stat"><strong>${escapeHtml(events)}</strong><span>${L('事件','Events')}</span></div></div><a class="card-link" href="${path}" data-nav>${L('打开回放','Open replay')} ${icons.arrow}</a></article>`;
+}
+
 function renderCreate() {
   document.title = L('创建回放 — OncoReplay','Create a replay — OncoReplay');
   const params = new URLSearchParams(window.location.search);
