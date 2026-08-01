@@ -88,7 +88,6 @@ function siteHeader() {
       <a class="nav-link" href="/methodology" data-nav>${L('方法','Methodology')}</a>
       <a class="nav-link" href="/about" data-nav>${L('关于','About')}</a>
       <button class="button small ghost" type="button" data-locale>${state.locale === 'zh' ? 'EN' : '中文'}</button>
-      <a class="button primary nav-cta" href="/create" data-nav>${L('创建回放','Create replay')}</a>
     </nav>
   </div></header>`;
 }
@@ -113,7 +112,7 @@ function renderHome() {
     <section class="hero">${heroNetwork()}<div class="container hero-content">
       <h1 class="display">${L('看一个肿瘤研究想法如何','Watch a cancer research idea')} <em>${L('演化。','evolve.')}</em></h1>
       <p class="lede">${L('把论文、引用、争议和临床转化串成一条互动时间线，随时暂停、点开核查、转发分享。','Turn papers, citations, controversies, and clinical translation into an interactive timeline you can pause, inspect, and share.')}</p>
-      <form class="search-panel" id="home-search"><input id="home-query" name="query" autocomplete="off" aria-label="${L('研究主题','Research topic')}" placeholder='${L('试试“YAP1 与 EGFR-TKI 耐药”','Try “YAP1 and EGFR-TKI resistance”')}' /><button class="button primary" type="submit">${L('生成回放','Generate replay')} ${icons.arrow}</button></form>
+      <form class="search-panel" id="home-search"><input id="home-query" name="query" autocomplete="new-password" aria-label="${L('研究主题','Research topic')}" placeholder='${L('试试“YAP1 与 EGFR-TKI 耐药”','Try “YAP1 and EGFR-TKI resistance”')}' /><button class="button primary" type="submit">${L('生成回放','Generate replay')} ${icons.arrow}</button></form>
       <div class="search-note">${L('请勿输入可识别患者身份或其他机密信息','No patient-identifiable or confidential information')}</div>
       <div class="hero-actions"><a class="button accent" href="/replay/kras-g12d" data-nav>${L('观看 KRAS G12D 示例','Watch the KRAS G12D example')}</a><a class="button ghost" href="/methodology" data-nav>${L('证据如何处理','How evidence is handled')}</a></div>
       <p class="hero-note">${L('科研探索与传播工具，不提供医疗建议或临床推荐，也不等同于完整系统综述。','A research exploration and communication tool — not medical advice, clinical recommendations, or a complete systematic review.')}</p>
