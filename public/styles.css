@@ -120,8 +120,8 @@ button { color: inherit; }
 
 .steps { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:var(--radius-lg); overflow:hidden; }
 .step { min-height:260px; background:var(--bg-soft); padding:34px; }
-.step-index { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--cyan); font-size:13px; }
-.step h3 { font-size:24px; letter-spacing:-.03em; margin:55px 0 12px; }.step p{color:var(--muted);line-height:1.65;font-size:14px}
+.step-index { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--cyan); font-size:15px; }
+.step h3 { font-size:26px; letter-spacing:-.03em; margin:55px 0 12px; }.step p{color:var(--muted);line-height:1.75;font-size:17px}
 
 .search-panel { margin-top: 44px; width: min(820px,100%); padding: 10px; border: 1px solid var(--line-strong); border-radius: 22px; background: rgba(11,23,29,.82); box-shadow: var(--shadow); display:flex; gap:10px; backdrop-filter: blur(16px); transition: border-color .2s ease, box-shadow .2s ease; }
 .search-panel:focus-within { border-color: rgba(112,226,209,.55); box-shadow: 0 0 0 1px rgba(112,226,209,.28), 0 0 28px rgba(112,226,209,.14), var(--shadow); }
