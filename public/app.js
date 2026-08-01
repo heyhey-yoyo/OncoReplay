@@ -116,25 +116,11 @@ function renderHome() {
       <form class="search-panel" id="home-search"><input id="home-query" name="query" autocomplete="off" aria-label="${L('研究主题','Research topic')}" placeholder='${L('试试“YAP1 与 EGFR-TKI 耐药”','Try “YAP1 and EGFR-TKI resistance”')}' /><button class="button primary" type="submit">${L('生成回放','Generate replay')} ${icons.arrow}</button></form>
       <div class="search-note">${L('请勿输入可识别患者身份或其他机密信息','No patient-identifiable or confidential information')}</div>
       <div class="hero-actions"><a class="button accent" href="/replay/kras-g12d" data-nav>${L('观看 KRAS G12D 示例','Watch the KRAS G12D example')}</a><a class="button ghost" href="/methodology" data-nav>${L('证据如何处理','How evidence is handled')}</a></div>
+      <p class="hero-note">${L('科研探索与传播工具，不提供医疗建议或临床推荐，也不等同于完整系统综述。','A research exploration and communication tool — not medical advice, clinical recommendations, or a complete systematic review.')}</p>
     </div></section>
-    <section class="trust-strip" aria-label="${L('数据来源','Data sources')}"><div class="container trust-inner"><span>${L('基于开放学术数据构建','Designed around open scholarly metadata')}</span><div class="source-logos"><span>OpenAlex</span><span>Europe PMC</span><span>Crossref</span></div></div></section>
-    <section class="section"><div class="container"><div class="section-head"><div><span class="eyebrow">${L('精选回放','Curated replays')}</span><h2 class="section-title">${L('从故事进入，而不是面对空白页。','Enter through a story, not a blank screen.')}</h2></div><p class="section-copy">${L('每条回放都把故事、证据出处和不确定性分开呈现。','Each replay keeps narrative, source metadata, and uncertainty visually separate.')}</p></div><div class="cards">
-      ${exampleCard('KRAS G12D inhibitors','2006–2026','40','12',L('一个领域如何加速、分叉，并遭遇临床转化的现实约束。','A field accelerates, branches, and meets the realities of translation.'),'/replay/kras-g12d')}
-      ${exampleCard('HER2-low breast cancer','2013–2026',L('可生成','Generate'),'—',L('观察一个分类概念如何走向临床策略。','Watch a classification move from descriptive label toward clinical strategy.'),'/create?query=HER2-low%20breast%20cancer')}
-      ${exampleCard('Ferroptosis in cancer therapy','2012–2026',L('可生成','Generate'),'—',L('追踪一个机制如何扩散到不同癌种和联合假说。','Follow a mechanism as it spreads across tumor types and combination hypotheses.'),'/create?query=ferroptosis%20in%20cancer%20therapy')}
-    </div></div></section>
-    <section class="section" style="padding-top:20px"><div class="container"><div class="section-head"><div><span class="eyebrow">${L('产品循环','The product loop')}</span><h2 class="section-title">${L('检索、重建、回放。','Find. Reconstruct. Replay.')}</h2></div><p class="section-copy">${L('AI 只整理已有材料：不编造编号，不改动日期，也不替科学下结论。','AI organizes source-bound material; it does not invent identifiers, change publication dates, or declare scientific consensus.')}</p></div><div class="steps">
-      <article class="step"><span class="step-index">01 / ${L('找到论文','Find the papers')}</span><h3>${L('先确认搜索范围。','Start from a checked query.')}</h3><p>${L('生成前先预览主题词、同义词、年份范围和样本文献。','Preview entities, synonyms, date range, and sample works before generation.')}</p></article>
-      <article class="step"><span class="step-index">02 / ${L('重建时间线','Reconstruct the timeline')}</span><h3>${L('看变化趋势，而不只是引用总量。','Score change, not just citation totals.')}</h3><p>${L('综合时间、影响力变化、网络位置、新方向的形成与旧方向回潮，以及论文的更正记录。','Combine time, normalized influence, graph bridges, branches, revival, and structured updates.')}</p></article>
-      <article class="step"><span class="step-index">03 / ${L('回放领域','Replay the field')}</span><h3>${L('先看故事，再核查证据。','See the story, then inspect evidence.')}</h3><p>${L('停在任意年份、切换视角，点开每个事件背后的论文。','Pause at any year, switch lenses, and open the sources behind every event.')}</p></article>
-    </div></div></section>
-  </main>${footer()}</div>`;
+  </main></div>`;
   bindCommonNavigation();
   document.querySelector('#home-search')?.addEventListener('submit', (event) => { event.preventDefault(); const query=document.querySelector('#home-query').value.trim(); navigate(query ? `/create?query=${encodeURIComponent(query)}` : '/create'); });
-}
-
-function exampleCard(title, span, works, events, copy, path) {
-  return `<article class="card example-card"><div class="card-glow"></div><span class="card-kicker">${L('精选回放','Featured replay')}</span><h3 class="card-title">${escapeHtml(title)}</h3><p class="card-copy">${escapeHtml(copy)}</p><div class="mini-timeline"><i></i><i></i><i></i><i></i><i></i></div><div class="card-stats"><div class="stat"><strong>${escapeHtml(span)}</strong><span>${L('时间线','Timeline')}</span></div><div class="stat"><strong>${escapeHtml(works)}</strong><span>${L('论文','Works')}</span></div><div class="stat"><strong>${escapeHtml(events)}</strong><span>${L('事件','Events')}</span></div></div><a class="card-link" href="${path}" data-nav>${L('打开回放','Open replay')} ${icons.arrow}</a></article>`;
 }
 
 function renderCreate() {
