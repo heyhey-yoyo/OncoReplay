@@ -1,115 +1,285 @@
-# OncoReplay 外部设置与部署教程
+# OncoReplay 中文部署、升级与外部设置教程
 
+> 对应版本：0.3.0  
 > 核对日期：2026-08-01  
-> 本教程对应本仓库当前文件。Cloudflare、OpenAlex 的产品规则和额度可能变化，正式上线前请再次查看文末官方资料。
+> 目标平台：Cloudflare Workers + Static Assets + D1 + Queues + Workers AI
 
-## 1. 先选择部署目标
+本教程分为两条路径：
 
-### 路线 A：先把视觉原型上线
+- **A. 你已经部署了旧版**：原地升级，解决 `Custom generation pipeline is scaffolded...`。
+- **B. 你从零开始部署**：创建所有外部资源并上线完整自定义生成。
 
-适合先展示页面、收集反馈，不接真实查询和生成管线。
+---
 
-能够使用：
+## 1. 先解释旧提示
 
-- 首页、Explore、Methodology、About；
-- `/replay/kras-g12d` 完整固定数据回放；
-- 播放、拖动年份、Momentum/Debate、证据抽屉、移动端布局；
-- `/api/health`。
+旧版出现：
 
-暂不启用：
+```text
+Custom generation pipeline is scaffolded. Configure D1, Queue, and Workers AI to continue.
+```
 
-- OpenAlex 实时查询预览；
-- D1；
-- Queues；
-- Workers AI；
-- 自定义回放生成。
+这不是因为你少配置了某个隐藏选项。旧版的按钮和 Queue consumer 本身就是占位实现：前端固定弹出该提示，队列任务固定停止。仅仅配置 D1、Queue 和 Workers AI 无法让旧代码继续运行。
+
+本版本已经把占位逻辑替换为真实五阶段生成管线，并默认中文化。
+
+---
+
+# A. 已部署旧版：原地升级
+
+## A1. 解压新版并保留你的配置
+
+新版项目解压后，先打开旧项目的 `wrangler.jsonc`，记录：
+
+- Worker 名称；
+- D1 `database_id`；
+- Queue 名称；
+- 自定义域名配置（若有）；
+- 其他你自己增加的变量。
+
+把旧的真实 `database_id` 写入新版 `wrangler.jsonc`：
+
+```jsonc
+"database_id": "你的真实 D1 database_id"
+```
+
+如果你原来的 Worker 名称不是 `oncoreplay`，把新版：
+
+```jsonc
+"name": "oncoreplay"
+```
+
+改回旧名称，这样会覆盖升级原 Worker，而不是新建另一个站点。
+
+## A2. 设置联系邮箱
+
+打开 `wrangler.jsonc`：
+
+```jsonc
+"vars": {
+  "AI_MODEL": "@cf/meta/llama-3.1-8b-instruct-fast",
+  "CONTACT_EMAIL": "you@example.com",
+  "CROSSREF_MAILTO": "you@example.com"
+}
+```
+
+把两个示例邮箱改为你的有效联系邮箱。它们用于第三方 API 的礼貌标识，不是登录凭据，不需要设为 secret。
+
+## A3. 安装依赖
+
+```bash
+npm install
+```
+
+检查 Wrangler：
+
+```bash
+npx wrangler --version
+npx wrangler whoami
+```
+
+尚未登录时：
+
+```bash
+npx wrangler login
+```
+
+## A4. 确认 OpenAlex secret
+
+查看当前 Worker secrets：
+
+```bash
+npx wrangler secret list
+```
+
+列表里应有：
+
+```text
+OPENALEX_API_KEY
+```
+
+没有时重新设置：
+
+```bash
+npx wrangler secret put OPENALEX_API_KEY
+```
+
+按提示粘贴真实 key。不要把 key 写进 `wrangler.jsonc`、前端代码或 Git。
+
+## A5. 应用新增 D1 迁移
+
+旧版一般已经应用 `0001_init.sql`。新版新增：
+
+```text
+migrations/0002_full_pipeline.sql
+```
 
 执行：
 
 ```bash
-npm install
-npx wrangler login
-npm run deploy:demo
+npx wrangler d1 migrations list oncoreplay-db --remote
+npx wrangler d1 migrations apply oncoreplay-db --remote
 ```
 
-部署使用 `wrangler.demo.jsonc`，不会要求你先创建数据库或密钥。
+正常情况下只会应用待执行的 `0002_full_pipeline.sql`，不会重新执行已经记录的 `0001_init.sql`。
 
-### 路线 B：部署完整后端骨架
+迁移新增：
 
-适合继续开发真实数据 MVP。它会启用：
+- `replays.subtitle`；
+- `replays.locale`；
+- `replays.data_status`；
+- `replays.open_questions_json`；
+- `replay_works.analysis_json`。
 
-- OpenAlex 实时查询预览；
-- D1 数据模型；
-- Queue 生产者和消费者；
-- Workers AI binding；
-- 自定义生成任务的创建与状态记录。
+验证：
 
-注意：真实的候选论文扩展、评分、聚类、Crossref 核对和 AI 叙事尚未实现。Queue 消费者会诚实地把任务标为 `needs_implementation`，不会伪造生成完成。
+```bash
+npx wrangler d1 execute oncoreplay-db --remote --command="PRAGMA table_info(replays)"
+npx wrangler d1 execute oncoreplay-db --remote --command="PRAGMA table_info(replay_works)"
+```
+
+你应能看到上述新增字段。
+
+## A6. 确认两个 Queue 存在
+
+```bash
+npx wrangler queues list
+```
+
+应包含：
+
+```text
+oncoreplay-replay-jobs
+oncoreplay-replay-jobs-dlq
+```
+
+缺少时创建：
+
+```bash
+npx wrangler queues create oncoreplay-replay-jobs
+npx wrangler queues create oncoreplay-replay-jobs-dlq
+```
+
+若提示队列已经存在，无需重复创建。
+
+## A7. 重新构建和部署
+
+```bash
+npm run check
+npm test
+npm run build
+npm run deploy
+```
+
+`wrangler.jsonc` 中已经声明：
+
+- `DB`：D1 binding；
+- `REPLAY_QUEUE`：Queue producer；
+- `oncoreplay-replay-jobs`：Queue consumer；
+- `AI`：Workers AI binding；
+- `ASSETS`：静态资源。
+
+Workers AI binding 不需要单独申请 API key；它通过当前 Cloudflare 账号的 binding 调用。
+
+## A8. 清除旧前端缓存
+
+部署后若页面仍出现英文 scaffold 提示，通常是旧静态资源缓存，而不是新代码仍有占位逻辑。
+
+依次执行：
+
+1. 使用无痕窗口打开站点；
+2. 浏览器强制刷新：Windows/Linux `Ctrl + Shift + R`，macOS `Cmd + Shift + R`；
+3. 确认终端刚刚部署的是新版目录；
+4. 在本地项目运行：
+
+```bash
+grep -R "Custom generation pipeline is scaffolded" public src
+```
+
+新版应无匹配结果。
+
+## A9. 验证绑定
+
+访问：
+
+```text
+https://你的域名/api/health
+```
+
+应看到：
+
+```json
+{
+  "ok": true,
+  "bindings": {
+    "d1": true,
+    "queue": true,
+    "ai": true,
+    "openAlex": true
+  }
+}
+```
+
+任一项为 `false` 时，不要先测试生成，先按第 8 节排错。
+
+## A10. 测试真实自定义生成
+
+建议先使用较小参数：
+
+```text
+主题：KRAS G12D inhibitors in pancreatic cancer
+最大论文量：100
+关注角度：全部
+```
+
+流程应为：
+
+```text
+检索预览
+→ 生成完整回放
+→ 检索论文并扩展引用网络
+→ Europe PMC / Crossref 补充
+→ turning-point 评分与 Louvain 聚类
+→ Workers AI Schema 叙事
+→ 完成回放
+```
 
 ---
 
-## 2. 本地环境
+# B. 从零部署完整版本
 
-### 2.1 安装软件
+## B1. 准备环境
 
-建议：
+需要：
 
-- Node.js 20 或更高版本；
-- Git；
-- 一个 Cloudflare 账号；
-- 一个 GitHub 账号（可选，但推荐用于版本管理和持续部署）。
+- Node.js 20 或更高；
+- Cloudflare 账号；
+- OpenAlex 账号和 API key；
+- Git 可选。
 
 检查：
 
 ```bash
 node -v
-git --version
+npm -v
 ```
 
-### 2.2 安装 Wrangler
-
-在项目根目录执行：
+安装并登录：
 
 ```bash
 npm install
-```
-
-`package.json` 已把 Wrangler 设为开发依赖。以后使用：
-
-```bash
-npx wrangler --version
-```
-
-### 2.3 登录 Cloudflare
-
-```bash
 npx wrangler login
-```
-
-浏览器会打开 Cloudflare 授权页面。完成后回到终端。
-
-检查登录状态：
-
-```bash
 npx wrangler whoami
 ```
 
----
+## B2. 获取 OpenAlex API key
 
-## 3. 获取 OpenAlex API Key
-
-OpenAlex 目前要求 API key；免费 key 当前提供每日 1 美元的免费用量预算。不同操作消耗不同，正式产品必须缓存与限流。
-
-步骤：
-
-1. 打开 `https://openalex.org/` 并创建账号；
-2. 进入 API 设置页：`https://openalex.org/settings/api`；
+1. 登录 OpenAlex；
+2. 打开 OpenAlex API 设置页面；
 3. 创建或复制 API key；
-4. 不要把 key 写入 Git、`wrangler.jsonc` 或前端 JavaScript。
+4. 不要提交到 Git。
 
-### 3.1 本地开发密钥
-
-复制示例文件：
+本地开发：
 
 ```bash
 cp .dev.vars.example .dev.vars
@@ -121,145 +291,71 @@ cp .dev.vars.example .dev.vars
 OPENALEX_API_KEY=你的真实_key
 ```
 
-`.dev.vars` 已在 `.gitignore` 中。
-
-### 3.2 线上密钥
-
-执行：
+线上：
 
 ```bash
 npx wrangler secret put OPENALEX_API_KEY
 ```
 
-按提示粘贴 key。不要把 key 直接写在命令参数里，避免留在 shell 历史。
+项目使用 `secrets.required` 声明必需 secret；缺少该值时，新的 Wrangler 会在开发或部署阶段给出明确警告或阻止部署。
 
-本项目在 `wrangler.jsonc` 中声明了必需 secret。完整部署时如果缺失，Wrangler 会给出明确错误。
-
----
-
-## 4. 创建 Cloudflare D1 数据库
-
-### 4.1 创建数据库
+## B3. 创建 D1
 
 ```bash
 npx wrangler d1 create oncoreplay-db
 ```
 
-终端会返回类似：
-
-```json
-{
-  "binding": "DB",
-  "database_name": "oncoreplay-db",
-  "database_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-}
-```
-
-### 4.2 写入 database_id
-
-打开 `wrangler.jsonc`，找到：
+复制返回的 `database_id`，写入 `wrangler.jsonc`：
 
 ```jsonc
-"database_id": "REPLACE_WITH_D1_DATABASE_ID"
+"d1_databases": [
+  {
+    "binding": "DB",
+    "database_name": "oncoreplay-db",
+    "database_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "migrations_dir": "migrations"
+  }
+]
 ```
 
-替换成命令返回的真实 ID。
+不要修改 binding 名称 `DB`，Worker 代码通过 `env.DB` 访问。
 
-保持 binding 名称为：
-
-```jsonc
-"binding": "DB"
-```
-
-Worker 代码通过 `env.DB` 访问数据库。
-
-### 4.3 应用本地迁移
-
-```bash
-npm run db:local
-```
-
-### 4.4 应用线上迁移
-
-```bash
-npm run db:remote
-```
-
-迁移文件为：
-
-```text
-migrations/0001_init.sql
-```
-
-它创建：
-
-- `replays`；
-- `replay_queries`；
-- `works`；
-- `replay_works`；
-- `work_relations`；
-- `branches`；
-- `events`；
-- `jobs`；
-- `ai_runs`；
-- `feedback`；
-- 必要索引。
-
-### 4.5 验证数据库
-
-本地：
-
-```bash
-npx wrangler d1 execute oncoreplay-db --local --command="SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-```
-
-线上：
-
-```bash
-npx wrangler d1 execute oncoreplay-db --remote --command="SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-```
-
----
-
-## 5. 创建 Cloudflare Queues
-
-本项目使用一个主队列和一个死信队列。
-
-### 5.1 创建主队列
+## B4. 创建 Queues
 
 ```bash
 npx wrangler queues create oncoreplay-replay-jobs
-```
-
-### 5.2 创建死信队列
-
-```bash
 npx wrangler queues create oncoreplay-replay-jobs-dlq
 ```
 
-`wrangler.jsonc` 已包含：
+主队列负责五阶段生成；DLQ 接收超过重试上限的消息。
 
-- producer binding：`REPLAY_QUEUE`；
-- consumer：`oncoreplay-replay-jobs`；
-- `max_batch_size: 5`；
-- `max_retries: 3`；
-- dead-letter queue：`oncoreplay-replay-jobs-dlq`。
+`wrangler.jsonc` 中必须保持：
 
-Worker 通过：
-
-```js
-await env.REPLAY_QUEUE.send(message)
+```jsonc
+"queues": {
+  "producers": [
+    {
+      "binding": "REPLAY_QUEUE",
+      "queue": "oncoreplay-replay-jobs"
+    }
+  ],
+  "consumers": [
+    {
+      "queue": "oncoreplay-replay-jobs",
+      "max_batch_size": 1,
+      "max_batch_timeout": 5,
+      "max_retries": 3,
+      "dead_letter_queue": "oncoreplay-replay-jobs-dlq"
+    }
+  ]
+}
 ```
 
-发送任务。
+`max_batch_size: 1` 是刻意设置：每个任务阶段包含外部 API 与 D1 写入，单条消费更容易控制资源和恢复错误。
 
-Queues 免费计划当前提供每日 10,000 次操作，免费层最大消息保留期为 24 小时。一个成功消息通常会产生写、读、删等多次操作，因此不要把一篇论文拆成一个微任务。
+## B5. 配置 Workers AI
 
----
-
-## 6. 启用 Workers AI
-
-Workers AI 不需要你创建普通 API key。本项目已经在 `wrangler.jsonc` 中配置：
+`wrangler.jsonc` 已包含：
 
 ```jsonc
 "ai": {
@@ -267,90 +363,436 @@ Workers AI 不需要你创建普通 API key。本项目已经在 `wrangler.jsonc
 }
 ```
 
-部署后 Worker 可通过：
-
-```js
-env.AI.run(modelName, input)
-```
-
-调用模型。
-
-当前代码没有执行真实 AI 推理，因为叙事 schema、来源约束、重试和降级逻辑需要在下一开发阶段实现后再开放。
-
-截至 2026-08-01：
-
-- Workers AI 免费分配为每日 10,000 Neurons；
-- 部分模型只允许 Workers Paid；
-- 模型名不应写死，应使用环境变量或配置表；
-- 超额或模型不可用时，必须返回规则模板，不应让整个回放失败。
-
-建议以后增加一个非敏感变量：
+默认模型：
 
 ```jsonc
-"vars": {
-  "AI_MODEL": "选择的免费计划可用模型"
-}
+"AI_MODEL": "@cf/meta/llama-3.1-8b-instruct-fast"
 ```
 
-不要把真正的 secret 放在 `vars`。
+该模型支持 Workers AI JSON Mode。代码仍会在应用端验证：
 
----
+- 所有 branch ID 必须来自规则聚类；
+- 所有 event ID 必须来自规则事件；
+- 每个 source work ID 必须属于该事件原始证据集合；
+- 置信度范围必须为 0–1；
+- 输出不能遗漏或重复分支和事件；
+- Schema 失败后只重试一次；
+- 再次失败时使用规则叙事，回放仍可完成。
 
-## 7. 本地运行方式
+## B6. 设置 API 联系邮箱
 
-### 7.1 最稳定的界面预览
+打开 `wrangler.jsonc`：
 
-无需 Wrangler：
+```jsonc
+"CONTACT_EMAIL": "you@example.com",
+"CROSSREF_MAILTO": "you@example.com"
+```
+
+改为你的邮箱。不要保留示例地址。
+
+## B7. 应用迁移
+
+本地：
+
+```bash
+npm run db:local
+```
+
+线上：
+
+```bash
+npm run db:remote
+```
+
+等价于：
+
+```bash
+npx wrangler d1 migrations apply oncoreplay-db --local
+npx wrangler d1 migrations apply oncoreplay-db --remote
+```
+
+验证表：
+
+```bash
+npx wrangler d1 execute oncoreplay-db --remote --command="SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+```
+
+应至少看到：
+
+```text
+ai_runs
+branches
+events
+feedback
+jobs
+replay_queries
+replay_works
+replays
+work_relations
+works
+```
+
+## B8. 本地完整开发
 
 ```bash
 npm run dev
 ```
 
-打开：
+这会先构建静态资源，再启动 Wrangler 本地 Worker。
 
-```text
-http://localhost:4173
-```
-
-这个本地服务器：
-
-- 支持 SPA 路由回退；
-- 提供本地 `/api/health`；
-- 对 `/api/query/preview` 返回明确标记的演示数据。
-
-### 7.2 用 Wrangler 测试完整 binding
-
-先构建：
+只看前端演示：
 
 ```bash
+npm run dev:static
+```
+
+注意：静态模式没有 `/api/query/preview`、D1、Queue 或 Workers AI，不可用于验证自定义生成。
+
+## B9. 部署
+
+```bash
+npm run check
+npm test
 npm run build
+npm run deploy
 ```
 
-然后：
-
-```bash
-npx wrangler dev
-```
-
-这时可测试：
+部署后先检查：
 
 ```text
-http://localhost:8787/api/health
+/api/health
 ```
 
-返回的 `bindings` 字段会显示 D1、Queue、AI 和 OpenAlex 是否存在。
+然后再提交自定义主题。
 
-如果只想用 demo 配置：
+---
+
+# 2. 真实生成管线说明
+
+## 2.1 OpenAlex 多层扩展
+
+第一阶段执行：
+
+1. 主题全文检索，最多获取 100 篇 seed works；
+2. 对高优先级核心论文扩展参考文献；
+3. 查询引用核心论文的后续论文；
+4. 有界扩展 OpenAlex related works；
+5. 按年份、排除词、文本相关性和层级优先级去重裁剪；
+6. 把论文和引用/相关关系写入 D1。
+
+候选集最多 500 篇。为避免在 Worker 中对 500 篇执行昂贵的全对全图计算，第二阶段之后会选择相关性最高的最多 220 篇进入加权图分析，其他候选仍保存在 D1。
+
+## 2.2 Europe PMC 摘要补充
+
+对缺少摘要且具有 PMID 或 DOI 的高优先级论文查询 Europe PMC `resultType=core`，补充：
+
+- abstract；
+- PMID；
+- PMCID；
+- DOI；
+- 首次发表日期线索。
+
+Europe PMC 失败不会让整条回放失败；系统继续使用 OpenAlex 数据。
+
+## 2.3 Crossref 更新核对
+
+对具有 DOI 的高优先级论文：
+
+- 查询单篇 Crossref metadata；
+- 读取 `update-to`、`updated-by` 和 relation；
+- 使用 `updates:<doi>` 查询更新该 DOI 的更正/撤稿记录；
+- 规范化为 correction、retraction、expression-of-concern、reinstatement 等状态；
+- 只展示结构化状态，不从标题推断学术不端。
+
+## 2.4 turning-point 评分
+
+评分组合：
+
+- 文本与实体相关性；
+- OpenAlex topic 一致性；
+- 与核心论文的网络距离；
+- citation normalized percentile、FWCI 和同候选集引用分位；
+- 年度引用动量；
+- 跨社区桥接；
+- 新分支首次出现；
+- 临床信号；
+- 挑战/限制性语言候选；
+- 复兴信号；
+- Crossref/OpenAlex 结构化更新。
+
+每篇关键论文的分项会写入 `replay_works.analysis_json`，前端用归一化影响和争议信号控制节点视觉。
+
+## 2.5 Louvain 聚类
+
+系统构造无向加权图，边来自：
+
+- 引用关系；
+- OpenAlex related 关系；
+- topic Jaccard；
+- 标题与摘要 token cosine；
+- bibliographic coupling。
+
+随后执行确定性的 Louvain 局部模块度优化，并通过合并或拆分把社区数量约束到 3–6 条，以保证可视化可读性。AI 只负责给已有社区命名，不负责改变论文归属。
+
+## 2.6 Workers AI 严格 Schema
+
+AI 输入只包含：
+
+- 已生成的分支；
+- 已生成的规则事件；
+- 与事件绑定的论文 ID、标题、年份和截断摘要；
+- 结构化更新状态。
+
+AI 无权生成新 work ID、DOI、PMID、日期、引用关系或撤稿状态。
+
+## 2.7 完整自定义回放
+
+任务完成后 `/api/replays/:slug` 返回：
+
+- 分支；
+- 关键论文；
+- 可视化边；
+- 8–15 个事件；
+- 来源 work IDs；
+- 置信度与人工核查标记；
+- 当前开放问题；
+- 中英文界面需要的字段。
+
+---
+
+# 3. 中文化说明
+
+默认语言由浏览器本地存储控制，首次访问默认为简体中文。
+
+已中文化：
+
+- 首页与导航；
+- 创建表单；
+- 检索预览；
+- 五阶段生成状态；
+- API 错误；
+- 回放控制；
+- Momentum / Debate；
+- 事件类型；
+- 证据抽屉；
+- Methodology；
+- About 与免责声明；
+- 规则叙事；
+- Workers AI 中文 Prompt。
+
+导航中的 `EN` 可切换英文；切换结果保存到 `localStorage`。
+
+英文研究主题通常比纯中文主题更容易匹配开放学术数据库，因此创建页会建议使用英文主题，但输出界面和 AI 叙事可保持中文。
+
+---
+
+# 4. API 验证
+
+## 4.1 Health
 
 ```bash
-npx wrangler dev --config wrangler.demo.jsonc
+curl https://你的域名/api/health
+```
+
+## 4.2 Query preview
+
+```bash
+curl -X POST https://你的域名/api/query/preview \
+  -H 'content-type: application/json' \
+  -d '{
+    "topic":"KRAS G12D inhibitors in pancreatic cancer",
+    "startYear":2006,
+    "endYear":2026,
+    "maxWorks":100,
+    "angle":"all",
+    "locale":"zh"
+  }'
+```
+
+## 4.3 创建回放
+
+```bash
+curl -X POST https://你的域名/api/replays \
+  -H 'content-type: application/json' \
+  -d '{
+    "topic":"KRAS G12D inhibitors in pancreatic cancer",
+    "startYear":2006,
+    "endYear":2026,
+    "maxWorks":100,
+    "angle":"all",
+    "locale":"zh"
+  }'
+```
+
+返回 `slug` 后：
+
+```bash
+curl https://你的域名/api/replays/返回的slug/status
+curl https://你的域名/api/replays/返回的slug
 ```
 
 ---
 
-## 8. 构建与质量检查
+# 5. 日志和数据库检查
 
-执行：
+## 5.1 实时 Worker 日志
+
+```bash
+npx wrangler tail
+```
+
+保持终端打开，再从网页提交主题。
+
+## 5.2 查看任务状态
+
+```bash
+npx wrangler d1 execute oncoreplay-db --remote --command="SELECT id,replay_id,job_type,status,progress_current,progress_total,error_code,error_message,updated_at FROM jobs ORDER BY updated_at DESC LIMIT 10"
+```
+
+## 5.3 查看回放状态
+
+```bash
+npx wrangler d1 execute oncoreplay-db --remote --command="SELECT slug,status,work_count,event_count,updated_at FROM replays ORDER BY updated_at DESC LIMIT 10"
+```
+
+## 5.4 查看 AI 回退情况
+
+```bash
+npx wrangler d1 execute oncoreplay-db --remote --command="SELECT task_type,model,status,validation_errors_json,created_at FROM ai_runs ORDER BY created_at DESC LIMIT 10"
+```
+
+`status='fallback'` 表示 Schema 或模型调用失败，但规则版回放仍应完成。
+
+---
+
+# 6. 常见错误
+
+## 6.1 仍显示 scaffolded 英文提示
+
+原因：仍在使用旧 `public/app.js` 或 CDN/浏览器缓存。
+
+处理：
+
+```bash
+npm run build
+npm run deploy
+```
+
+然后无痕窗口打开。确认新版代码中不存在旧字符串：
+
+```bash
+grep -R "Custom generation pipeline is scaffolded" public src
+```
+
+## 6.2 `/api/health` 中 `openAlex: false`
+
+```bash
+npx wrangler secret put OPENALEX_API_KEY
+npm run deploy
+```
+
+如果改变过 Worker `name` 或环境，需要在对应 Worker/环境重新设置 secret。
+
+## 6.3 `no such column: subtitle` 或 `analysis_json`
+
+新版迁移未应用：
+
+```bash
+npx wrangler d1 migrations apply oncoreplay-db --remote
+```
+
+确认 `wrangler.jsonc` 指向你实际使用的 D1 database ID。
+
+## 6.4 状态一直停在 `queued`
+
+检查：
+
+1. `/api/health` 的 `queue` 是否为 `true`；
+2. `wrangler.jsonc` producer binding 是否为 `REPLAY_QUEUE`；
+3. consumer queue 名是否和实际队列一致；
+4. Cloudflare Dashboard → Queues → 主队列 → Consumers 是否绑定当前 Worker；
+5. `npx wrangler tail` 是否有 consumer 错误。
+
+重新部署通常会同步 consumer 配置：
+
+```bash
+npm run deploy
+```
+
+## 6.5 `OPENALEX_ERROR` 或 401/403
+
+- 检查 key 是否有效；
+- 检查 Worker secret 名必须精确为 `OPENALEX_API_KEY`；
+- 不要在 key 前后加入引号或空格；
+- 检查 OpenAlex 账户额度与状态。
+
+## 6.6 `NO_WORKS_FOUND`
+
+- 使用英文主题；
+- 去掉过窄的癌种或年份；
+- 删除排除词；
+- 先确认 query preview 有样本文献。
+
+## 6.7 Crossref 或 Europe PMC 暂时失败
+
+补充源失败会被局部降级，不会必然终止整条回放。结果会保留 OpenAlex 元数据；更新状态未核对时，不会凭标题推断撤稿。
+
+## 6.8 Workers AI 失败但回放完成
+
+这是预期降级行为。查看 `ai_runs`：
+
+- `complete`：Schema 叙事成功；
+- `fallback`：模型调用或验证失败，使用规则标题和摘要。
+
+## 6.9 Queue 进入 DLQ
+
+查看 Cloudflare Dashboard 的 `oncoreplay-replay-jobs-dlq`，并用 D1 `jobs.error_code/error_message` 定位失败阶段。修复配置后，在回放失败页点击“从头重试”，或调用：
+
+```bash
+curl -X POST https://你的域名/api/replays/slug/retry
+```
+
+## 6.10 第二个自定义回放出现 branch 主键冲突
+
+本版本已给每个 replay 的 Louvain community ID 增加 replay 前缀，避免多个回放在同一 D1 中共享 `c0/c1` 造成冲突。请确认部署的是 0.3.0 新版，而不是中间构建。
+
+---
+
+# 7. 自定义域名
+
+部署完成后可在 Cloudflare Dashboard：
+
+```text
+Workers & Pages
+→ 选择 oncoreplay
+→ Settings / Domains & Routes
+→ Add Custom Domain
+```
+
+前后端使用同源 `/api/*`，不需要额外配置 CORS。
+
+---
+
+# 8. 发布前检查清单
+
+```text
+[ ] wrangler.jsonc 中 database_id 已替换
+[ ] CONTACT_EMAIL / CROSSREF_MAILTO 已替换
+[ ] OPENALEX_API_KEY secret 已设置
+[ ] 两个 Queue 已创建
+[ ] 0001 和 0002 migration 已应用
+[ ] /api/health 四个 binding 均为 true
+[ ] query preview 返回真实 OpenAlex 样本
+[ ] 100 篇小任务能完成五阶段生成
+[ ] 证据抽屉能打开 DOI/OpenAlex 来源
+[ ] 手机端可拖动年份和打开证据
+[ ] 页面默认中文，EN 切换正常
+[ ] 页面固定显示研究工具和非医疗建议声明
+```
+
+---
+
+# 9. 质量命令
 
 ```bash
 npm run check
@@ -358,359 +800,4 @@ npm test
 npm run build
 ```
 
-说明：
-
-- `check` 检查 JavaScript 语法；
-- `test` 使用 Node 内置测试器验证年份过滤、播放步进、事件选择、节点权重和 slug；
-- `build` 把 `public/` 复制到 `dist/`。
-
-建议在正式接入真实数据后增加：
-
-- OpenAlex abstract inverted index 重建测试；
-- DOI、PMID 标准化测试；
-- 相关性与 turning-point 评分测试；
-- D1 集成测试；
-- Queue 幂等测试；
-- Playwright 桌面与移动端 E2E；
-- reduced-motion E2E。
-
----
-
-## 9. 部署
-
-### 9.1 视觉 Demo
-
-```bash
-npm run deploy:demo
-```
-
-部署结束后 Wrangler 会输出 `*.workers.dev` 地址。
-
-### 9.2 完整后端骨架
-
-确认以下项目全部完成：
-
-- `OPENALEX_API_KEY` 已设置；
-- `wrangler.jsonc` 中 D1 ID 已替换；
-- 主队列和死信队列已创建；
-- 远程 D1 migration 已应用。
-
-然后：
-
-```bash
-npm run deploy
-```
-
-### 9.3 部署后检查
-
-访问：
-
-```text
-https://你的域名/api/health
-```
-
-应返回：
-
-```json
-{
-  "ok": true,
-  "service": "oncoreplay",
-  "bindings": {
-    "d1": true,
-    "queue": true,
-    "ai": true,
-    "openAlex": true
-  }
-}
-```
-
-测试实时查询预览：
-
-```bash
-curl -X POST "https://你的域名/api/query/preview" \
-  -H "content-type: application/json" \
-  -d '{"topic":"KRAS G12D inhibitors in pancreatic cancer","startYear":2006,"endYear":2026}'
-```
-
----
-
-## 10. 绑定自定义域名
-
-在 Cloudflare Dashboard：
-
-1. 进入 **Workers & Pages**；
-2. 选择 `oncoreplay` 或 `oncoreplay-demo`；
-3. 打开 **Settings / Domains & Routes**；
-4. 选择 **Add / Custom Domain**；
-5. 输入例如 `oncoreplay.example.com`；
-6. 按提示确认 DNS。
-
-如果域名已经托管在同一个 Cloudflare 账号，一般可直接添加。
-
-部署后检查：
-
-- 首页；
-- `/replay/kras-g12d`；
-- `/methodology`；
-- `/api/health`；
-- 手机视口；
-- 分享链接；
-- 浏览器控制台错误。
-
----
-
-## 11. GitHub 仓库设置
-
-目标仓库建议：
-
-```text
-heyhey-yoyo/oncoreplay
-```
-
-初始化并提交：
-
-```bash
-git init
-git add .
-git commit -m "Build OncoReplay visual prototype and Cloudflare scaffold"
-git branch -M main
-git remote add origin git@github.com:heyhey-yoyo/oncoreplay.git
-git push -u origin main
-```
-
-确认这些文件没有提交：
-
-- `.dev.vars`；
-- `.env`；
-- `.wrangler/`；
-- `node_modules/`；
-- 任何 API key。
-
-### 11.1 GitHub Actions 建议
-
-最小 CI：
-
-```yaml
-name: CI
-on:
-  push:
-  pull_request:
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run check
-      - run: npm test
-      - run: npm run build
-```
-
-自动部署需要 Cloudflare API Token 和 Account ID。把它们放入 GitHub repository secrets，不要写入 YAML：
-
-- `CLOUDFLARE_API_TOKEN`；
-- `CLOUDFLARE_ACCOUNT_ID`。
-
-Token 最小权限应只覆盖需要部署的 Workers、D1 和 Queues 资源。
-
----
-
-## 12. Cloudflare Dashboard 建议设置
-
-### 12.1 Web Analytics
-
-可以启用 Cloudflare Web Analytics，首发只收集匿名、聚合指标：
-
-- 首页到示例回放点击率；
-- 自定义预览启动率；
-- 事件点击率；
-- 证据抽屉打开率；
-- 分享率；
-- LCP、INP、CLS。
-
-MVP 不应建立细粒度个人画像。
-
-### 12.2 Logs / Observability
-
-`wrangler.jsonc` 已启用 observability。建议观察：
-
-- `/api/query/preview` 错误率；
-- OpenAlex HTTP 状态与超时；
-- Queue 重试；
-- D1 rows read / rows written；
-- Worker CPU；
-- AI JSON 校验失败率（实现后）；
-- 免费额度使用率。
-
-### 12.3 限流
-
-当前 Worker 只做了输入长度和外部域名固定，尚未实现持久限流。上线自定义生成前建议增加：
-
-- Cloudflare Rate Limiting Rules，或；
-- KV/D1 基于 IP 哈希和匿名 session 的每日计数；
-- 查询文本最大 240 字符；
-- 每日匿名生成次数；
-- 同一 query hash 复用结果。
-
-不要永久保存原始 IP；可保存按日加盐哈希。
-
----
-
-## 13. 必须继续实现的真实数据管线
-
-目前 Queue 消费者只标记 `needs_implementation`。下一阶段按以下顺序开发：
-
-1. `FETCH_WORKS`
-   - OpenAlex 搜索；
-   - 核心论文、参考文献、引用论文、related works 分层获取；
-   - 候选上限 500。
-2. `EXPAND_NETWORK`
-   - 引用关系子图；
-   - 固定域名、超时、重试和缓存。
-3. `ENRICH_BIOMEDICAL`
-   - 对关键候选通过 PMID/DOI 查询 Europe PMC；
-   - 不批量抓取全文。
-4. `CHECK_UPDATES`
-   - 通过 Crossref 的结构化关系核对 correction、retraction、expression of concern；
-   - 禁止根据标题自行推断。
-5. `BUILD_TIMELINE`
-   - relevance score；
-   - normalized citation growth；
-   - bridge score；
-   - clustering；
-   - Birth / Breakthrough / Branching / Revival / Translation / Challenge / Correction 规则。
-6. `GENERATE_NARRATIVE`
-   - Workers AI；
-   - 严格 JSON Schema；
-   - 只允许输入 work IDs；
-   - 一次修复重试；
-   - 规则模板降级。
-7. `FINALIZE_REPLAY`
-   - 只读快照；
-   - CDN cache；
-   - 分享 slug；
-   - OG metadata。
-
-每个任务必须幂等，并在 `jobs` 表持续写进度。
-
----
-
-## 14. 安全检查
-
-上线前逐项确认：
-
-- [ ] API key 只存在于 Cloudflare secret 或本地 `.dev.vars`；
-- [ ] Worker 只 fetch 固定的 OpenAlex、Europe PMC、Crossref 域名；
-- [ ] 用户不能传入任意 URL；
-- [ ] D1 全部使用绑定参数；
-- [ ] 输出 HTML 经过转义；
-- [ ] 分享 slug 随机且不可预测；
-- [ ] 生成接口有速率限制；
-- [ ] 页面固定显示医疗免责声明；
-- [ ] 不收集患者数据；
-- [ ] 不公开未授权全文 PDF；
-- [ ] correction / retraction 必须链接结构化来源；
-- [ ] AI 不能新增输入集合之外的论文 ID。
-
----
-
-## 15. 常见问题
-
-### 部署报 `REPLACE_WITH_D1_DATABASE_ID` 错误
-
-你使用了完整 `wrangler.jsonc`，但没有替换 D1 ID。先完成第 4 节，或改用：
-
-```bash
-npm run deploy:demo
-```
-
-### 部署提示缺少 `OPENALEX_API_KEY`
-
-执行：
-
-```bash
-npx wrangler secret put OPENALEX_API_KEY
-```
-
-### Queue 找不到
-
-先创建两个队列：
-
-```bash
-npx wrangler queues create oncoreplay-replay-jobs
-npx wrangler queues create oncoreplay-replay-jobs-dlq
-```
-
-### 自定义回放为什么没有真正生成
-
-本仓库完成的是高质量 Phase 0 前端和完整后端骨架。真实 citation expansion、聚类、事件算法和 AI schema 仍需要实现。代码刻意返回 `needs_implementation`，避免把占位结果冒充真实科学分析。
-
-### 首页查询预览显示 Local demonstration
-
-说明：
-
-- 当前使用 `npm run dev` 的依赖-free 本地服务器；或
-- Worker 没有配置 OpenAlex key；或
-- OpenAlex 请求失败/超时。
-
-用 `npx wrangler dev` 并设置 `.dev.vars` 可测试实时预览。
-
----
-
-## 16. 官方资料
-
-Cloudflare React / Vite：
-
-- https://developers.cloudflare.com/workers/framework-guides/web-apps/react/
-- https://developers.cloudflare.com/workers/vite-plugin/
-
-Cloudflare Static Assets / SPA：
-
-- https://developers.cloudflare.com/workers/static-assets/
-- https://developers.cloudflare.com/workers/static-assets/routing/single-page-application/
-
-Cloudflare D1：
-
-- https://developers.cloudflare.com/d1/get-started/
-- https://developers.cloudflare.com/d1/wrangler-commands/
-- https://developers.cloudflare.com/d1/platform/pricing/
-- https://developers.cloudflare.com/d1/platform/limits/
-
-Cloudflare Queues：
-
-- https://developers.cloudflare.com/queues/get-started/
-- https://developers.cloudflare.com/queues/configuration/configure-queues/
-- https://developers.cloudflare.com/queues/platform/pricing/
-
-Cloudflare Workers AI：
-
-- https://developers.cloudflare.com/workers-ai/
-- https://developers.cloudflare.com/workers-ai/get-started/workers-wrangler/
-- https://developers.cloudflare.com/workers-ai/platform/pricing/
-- https://developers.cloudflare.com/workers-ai/models/
-
-Cloudflare Secrets：
-
-- https://developers.cloudflare.com/workers/configuration/secrets/
-- https://developers.cloudflare.com/workers/local-development/environment-variables/
-
-OpenAlex：
-
-- https://developers.openalex.org/
-- https://developers.openalex.org/api-reference/authentication
-- https://developers.openalex.org/api-reference/works/list-works
-
-Europe PMC：
-
-- https://europepmc.org/developers
-- https://europepmc.org/RestfulWebService
-
-Crossref / Retraction Watch：
-
-- https://www.crossref.org/documentation/retrieve-metadata/rest-api/
-- https://www.crossref.org/documentation/retrieve-metadata/retraction-watch/
+本仓库不把 AI 成功作为回放完成的必要条件：结构化检索、评分、聚类和规则事件是核心，AI 仅增强命名与短叙事。
