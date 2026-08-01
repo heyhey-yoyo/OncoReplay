@@ -99,7 +99,9 @@ button { color: inherit; }
 .hero-content { position: relative; z-index: 2; }
 .hero-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top: 28px; }
 .hero-note { margin-top: 26px; color: var(--faint); font-size: 12px; line-height: 1.7; max-width: 640px; }
-.search-panel { margin-top: 44px; width: min(820px,100%); padding: 10px; border: 1px solid var(--line-strong); border-radius: 22px; background: rgba(11,23,29,.82); box-shadow: var(--shadow); display:flex; gap:10px; backdrop-filter: blur(16px); }
+.search-panel { margin-top: 44px; width: min(820px,100%); padding: 10px; border: 1px solid var(--line-strong); border-radius: 22px; background: rgba(11,23,29,.82); box-shadow: var(--shadow); display:flex; gap:10px; backdrop-filter: blur(16px); transition: border-color .2s ease, box-shadow .2s ease; }
+.search-panel:focus-within { border-color: rgba(112,226,209,.55); box-shadow: 0 0 0 1px rgba(112,226,209,.28), 0 0 28px rgba(112,226,209,.14), var(--shadow); }
+.search-panel input:focus-visible { outline: none; }
 .search-panel input { flex:1; min-width: 0; height: 58px; border:0; background:transparent; color:var(--text); padding:0 18px; font-size:17px; }
 .search-panel input::placeholder { color:#6f8581; }
 .search-panel .button { min-width: 156px; }
