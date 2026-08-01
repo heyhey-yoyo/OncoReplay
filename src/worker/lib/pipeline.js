@@ -350,14 +350,14 @@ async function runNarrativeAI(env, narrative, priorError = '') {
     branch_id: work.branchId, cited_by_count: work.citedByCount, update_status: work.updateStatus,
   }));
   const system = locale === 'en'
-    ? 'You write neutral, source-grounded oncology research timeline copy. Use only supplied work IDs. Never invent facts, identifiers, consensus, causality, efficacy, or misconduct. Distinguish structured facts from interpretation. Return only JSON matching the schema.'
-    : '你负责撰写中性、可追溯的肿瘤研究时间线叙事。只能使用输入中的 work ID，不得添加外部事实、论文、标识符、共识、因果、疗效结论或学术不端推断。必须区分结构化事实与解释；摘要不足时明确保守表达。仅返回符合 Schema 的 JSON。';
+    ? 'You write neutral, source-grounded oncology research timeline copy. Use only supplied work IDs. Never invent facts, identifiers, consensus, causality, efficacy, or misconduct. Distinguish structured facts from interpretation. Rewrite every branch label/description and every event title/summary/reason in your own words — never echo or rephrase the supplied scaffolding. Return only JSON matching the schema.'
+    : '你负责撰写中性、可追溯的肿瘤研究时间线叙事。只能使用输入中的 work ID，不得添加外部事实、论文、标识符、共识、因果、疗效结论或学术不端推断。必须区分结构化事实与解释；摘要不足时明确保守表达。必须用自己的话重写每个分支的标签/描述与每个事件的标题/摘要/选择理由，禁止复述或回显输入中的任何现成文案。仅返回符合 Schema 的 JSON。';
   const user = JSON.stringify({
     language: locale === 'en' ? 'English' : '简体中文',
     topic: narrative.context.replay.normalized_query,
     constraints: { event_title: '8-24 Chinese characters or 5-14 English words', event_summary: '45-100 Chinese characters or 40-80 English words', source_ids_must_be_subset: true },
-    branches: narrative.branches,
-    events: narrative.events,
+    branches: narrative.branches.map((branch) => ({ id: branch.id, source_work_ids: branch.sourceWorkIds })),
+    events: narrative.events.map((event) => ({ id: event.id, type: event.eventType, date: event.eventDate, source_work_ids: event.sourceWorkIds, confidence: event.confidence })),
     works: suppliedWorks,
     prior_validation_error: priorError || undefined,
   });
