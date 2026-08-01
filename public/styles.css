@@ -91,7 +91,7 @@ button { color: inherit; }
 
 .eyebrow { display: inline-flex; align-items: center; gap: 10px; color: var(--cyan); font-size: 18px; text-transform: uppercase; letter-spacing: .1em; font-weight: 760; }
 .eyebrow::before { content:""; width: 34px; height: 2px; background: currentColor; opacity:.7; }
-.brand-tag { color: var(--muted); font-size: 16px; font-weight: 760; letter-spacing: -.02em; padding-left: 11px; border-left: 1px solid var(--line-strong); white-space: nowrap; }
+.brand-tag { color: var(--text); font-size: 16px; font-weight: 760; letter-spacing: -.02em; padding-left: 11px; border-left: 1px solid var(--line-strong); white-space: nowrap; }
 .display { font-size: clamp(52px, 7.5vw, 104px); line-height: .96; letter-spacing: -.065em; margin: 24px 0; max-width: 1050px; text-wrap: balance; }
 .display em { font-style: normal; color: transparent; background: linear-gradient(90deg, #edf8f5 0%, #8ce2d7 46%, #aaa8ff 100%); -webkit-background-clip: text; background-clip: text; }
 .lede { font-size: clamp(18px, 2vw, 24px); line-height: 1.5; color: var(--muted); max-width: 760px; }
