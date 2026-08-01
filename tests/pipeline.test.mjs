@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { namespaceAnalysis, validateNarrative } from '../src/worker/lib/pipeline.js';
+import { namespaceAnalysis, validateChunk, validateNarrative } from '../src/worker/lib/pipeline.js';
 
 test('community IDs are namespaced per replay', () => {
   const raw = {
@@ -37,4 +37,28 @@ test('narrative validation rejects invented evidence IDs', () => {
     open_questions: [],
   };
   assert.throws(() => validateNarrative(payload, branches, events, works), /outside its supplied evidence/);
+});
+
+test('chunk validation accepts a valid event batch', () => {
+  const batch = [{ id: 'e1', sourceWorkIds: ['W1', 'W2'] }];
+  const works = [{ id: 'W1' }, { id: 'W2' }];
+  const payload = {
+    events: [{ event_id: 'e1', title: '事件', summary: '来源约束的摘要。', selection_reason: '规则评分选择。', source_work_ids: ['W1'], confidence: 0.7, requires_review: false }],
+  };
+  assert.equal(validateChunk(payload, 'events', batch, works, ['e1'])[0].event_id, 'e1');
+});
+
+test('chunk validation rejects an event outside its batch', () => {
+  const batch = [{ id: 'e1', sourceWorkIds: ['W1'] }];
+  const works = [{ id: 'W1' }];
+  const payload = {
+    events: [{ event_id: 'e9', title: '事件', summary: '摘要。', selection_reason: '原因。', source_work_ids: ['W1'], confidence: 0.7, requires_review: false }],
+  };
+  assert.throws(() => validateChunk(payload, 'events', batch, works, ['e1']), /Unknown or duplicate event id/);
+});
+
+test('chunk validation requires full branch coverage', () => {
+  const works = [];
+  const payload = { branches: [{ branch_id: 'b1', label: '机制', description: '机制研究分支。' }] };
+  assert.throws(() => validateChunk(payload, 'branches', [], works, ['b1', 'b2']), /omitted one or more supplied branches/);
 });

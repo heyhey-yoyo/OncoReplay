@@ -296,6 +296,26 @@ const NARRATIVE_SCHEMA = {
   required: ['branches','events','open_questions'],
 };
 
+// Narrative generation is split into small independent AI calls (branches /
+// events batches / open questions) so no single inference has to produce a
+// long output — keeps each call far below Workers AI latency limits and lets
+// a failed batch fall back without discarding the rest.
+const BRANCHES_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  properties: { branches: { type: 'array', items: NARRATIVE_SCHEMA.properties.branches.items } },
+  required: ['branches'],
+};
+const EVENTS_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  properties: { events: { type: 'array', items: NARRATIVE_SCHEMA.properties.events.items } },
+  required: ['events'],
+};
+const QUESTIONS_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  properties: { open_questions: NARRATIVE_SCHEMA.properties.open_questions },
+  required: ['open_questions'],
+};
+
 function parseAiResponse(result) {
   const value = result?.response ?? result;
   if (value && typeof value === 'object') return value;
@@ -332,6 +352,46 @@ export function validateNarrative(payload, branches, events, works) {
   return payload;
 }
 
+export function validateChunk(payload, type, events, works, expectedIds) {
+  if (type === 'branches') {
+    const branches = payload?.branches;
+    if (!Array.isArray(branches)) throw new Error('Schema root is invalid.');
+    const expected = new Set(expectedIds);
+    const seen = new Set();
+    for (const branch of branches) {
+      if (!expected.has(branch.branch_id) || seen.has(branch.branch_id)) throw new Error(`Invalid or duplicate branch output: ${branch.branch_id}`);
+      if (![branch.label, branch.description].every((value) => typeof value === 'string' && value.trim() && value.length <= 240)) throw new Error(`Incomplete branch output: ${branch.branch_id}`);
+      seen.add(branch.branch_id);
+    }
+    if (seen.size !== expected.size) throw new Error('AI omitted one or more supplied branches.');
+    return branches;
+  }
+  if (type === 'events') {
+    const output = payload?.events;
+    if (!Array.isArray(output)) throw new Error('Schema root is invalid.');
+    const eventMap = new Map(events.map((item) => [item.id, item]));
+    const workIds = new Set(works.map((item) => item.id));
+    const expected = new Set(expectedIds);
+    const seen = new Set();
+    for (const event of output) {
+      const original = eventMap.get(event.event_id);
+      if (!original || !expected.has(event.event_id) || seen.has(event.event_id)) throw new Error(`Unknown or duplicate event id: ${event.event_id}`);
+      if (![event.title,event.summary,event.selection_reason].every((value) => typeof value === 'string' && value.trim() && value.length <= 600)) throw new Error(`Incomplete event output: ${event.event_id}`);
+      if (!Array.isArray(event.source_work_ids) || event.source_work_ids.length < 1 || event.source_work_ids.length > 5 || event.source_work_ids.some((id) => !workIds.has(id) || !original.sourceWorkIds.includes(id))) throw new Error(`Event cited work outside its supplied evidence: ${event.event_id}`);
+      if (!Number.isFinite(event.confidence) || event.confidence < 0 || event.confidence > 1 || typeof event.requires_review !== 'boolean') throw new Error(`Invalid confidence: ${event.event_id}`);
+      seen.add(event.event_id);
+    }
+    if (seen.size !== expected.size) throw new Error('AI omitted one or more supplied events.');
+    return output;
+  }
+  if (type === 'questions') {
+    const questions = payload?.open_questions;
+    if (!Array.isArray(questions) || questions.length > 5 || questions.some((value) => typeof value !== 'string' || !value.trim() || value.length > 300)) throw new Error('Open questions are invalid.');
+    return questions;
+  }
+  throw new Error('Unknown chunk type.');
+}
+
 async function loadNarrativeContext(env, replayId) {
   const context = await replayContext(env, replayId);
   const branches = dbRows(await env.DB.prepare('SELECT * FROM branches WHERE replay_id=? ORDER BY sort_order').bind(replayId).all())
@@ -361,7 +421,7 @@ async function runNarrativeAI(env, narrative, priorError = '') {
     works: suppliedWorks,
     prior_validation_error: priorError || undefined,
   });
-  const model = env.AI_MODEL || '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
+  const model = env.AI_MODEL || AI_MODEL_DEFAULT;
   const result = await env.AI.run(model, {
     messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
     response_format: { type: 'json_schema', json_schema: NARRATIVE_SCHEMA },
@@ -371,30 +431,114 @@ async function runNarrativeAI(env, narrative, priorError = '') {
   return { model, payload: validateNarrative(parseAiResponse(result), narrative.branches, narrative.events, narrative.works) };
 }
 
+const AI_MODEL_DEFAULT = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
+
+async function logAiRun(env, runId, replayId, model, status, failures, output) {
+  const inputHash = await sha256({ status, failures, ...(output ? { sample: output.branches?.[0] || output.events?.[0] } : {}) });
+  await env.DB.prepare(`INSERT INTO ai_runs (id,replay_id,task_type,model,input_hash,output_json,status,validation_errors_json,created_at) VALUES (?,?,?,?,?,?,?,?,?)`)
+    .bind(runId, replayId, 'GENERATE_NARRATIVE', model, inputHash, output ? JSON.stringify(output) : null, status, JSON.stringify(failures.slice(0, 5)), nowIso()).run();
+}
+
+function chunkInstruction(type, locale) {
+  const zh = {
+    branches: '为每个分支撰写一个 4-12 字的中文标签和一句 20-60 字的中文描述，概括该分支的研究主线。用词要具体，禁止使用“临床转化”之类的通用模板语。',
+    events: '为每个事件撰写一个 8-24 字的中文标题、一句 45-100 字的中文摘要和一句不超过 40 字的选择理由。内容必须针对该事件对应的具体论文与年份展开，不得写成通用模板句。',
+    questions: '基于当前时间线提出 2-4 个该领域仍未解决、值得进一步核查的开放问题，每个 15-60 字。',
+  };
+  const en = {
+    branches: 'Write a 3-8 word label and a 20-60 word description for each branch summarizing its research theme. Be specific; never use generic template phrasing.',
+    events: 'For each event write a 5-14 word title, a 40-80 word summary, and a selection reason of at most 40 words. Reference the specific work and year of each event; never use generic template sentences.',
+    questions: 'Pose 2-4 open questions (15-60 words each) about unresolved aspects of this field worth verifying.',
+  };
+  return (locale === 'en' ? en : zh)[type];
+}
+
+async function withRetry(run, failures, attempts = 2) {
+  let lastError = '';
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try { return await run(lastError); }
+    catch (error) { lastError = error?.message || String(error); }
+  }
+  failures.push(lastError);
+  return null;
+}
+
+async function runNarrativeChunk(env, chunk, model, priorError = '') {
+  const { type, locale, topic } = chunk;
+  const system = locale === 'en'
+    ? `You write neutral, source-grounded oncology research timeline copy. Use only supplied work IDs. Never invent facts, identifiers, consensus, causality, efficacy, or misconduct. Rewrite everything in your own words — never echo or rephrase supplied scaffolding. ${chunkInstruction(type, locale)} Return only JSON matching the schema.`
+    : `你负责撰写中性、可追溯的肿瘤研究时间线叙事。只能使用输入中的 work ID，不得添加外部事实、论文、标识符、共识、因果、疗效结论或学术不端推断。必须用自己的话撰写，禁止复述或回显输入内容。${chunkInstruction(type, locale)}仅返回符合 Schema 的 JSON。`;
+  const relevantIds = new Set(chunk.events?.flatMap((event) => event.source_work_ids) || []);
+  const works = chunk.works ? chunk.works.filter((work) => relevantIds.has(work.id)).map((work) => ({
+    id: work.id, year: work.publicationYear, title: work.title, abstract: truncate(work.abstract || '摘要缺失', 500),
+    branch_id: work.branchId, cited_by_count: work.citedByCount, update_status: work.updateStatus,
+  })) : [];
+  const user = JSON.stringify({
+    language: locale === 'en' ? 'English' : '简体中文',
+    topic,
+    ...(type === 'branches' ? { branches: chunk.branches } : {}),
+    ...(type === 'events' ? { events: chunk.events, works } : {}),
+    prior_validation_error: priorError || undefined,
+  });
+  const schema = type === 'branches' ? BRANCHES_SCHEMA : type === 'events' ? EVENTS_SCHEMA : QUESTIONS_SCHEMA;
+  const result = await env.AI.run(model, {
+    messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+    response_format: { type: 'json_schema', json_schema: schema },
+    temperature: 0.2,
+    max_tokens: type === 'questions' ? 1024 : 2048,
+  });
+  return parseAiResponse(result);
+}
+
 async function narrativeStage(env, body) {
   if (!env.AI) return;
   const narrative = await loadNarrativeContext(env, body.replayId);
-  const inputHash = await sha256({ topic: narrative.context.replay.normalized_query, branches: narrative.branches, events: narrative.events });
-  let output;
-  let validationError = '';
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try { output = await runNarrativeAI(env, narrative, validationError); break; }
-    catch (error) { validationError = error.message || String(error); }
-  }
+  const locale = narrative.context.replay.locale || 'zh';
+  const topic = narrative.context.replay.normalized_query;
+  const model = env.AI_MODEL || AI_MODEL_DEFAULT;
   const runId = crypto.randomUUID();
-  if (!output) {
-    await env.DB.prepare(`INSERT INTO ai_runs (id,replay_id,task_type,model,input_hash,output_json,status,validation_errors_json,created_at) VALUES (?,?,?,?,?,NULL,'fallback',?,?)`)
-      .bind(runId, body.replayId, 'GENERATE_NARRATIVE', env.AI_MODEL || '@cf/meta/llama-3.3-70b-instruct-fp8-fast', inputHash, JSON.stringify([validationError]), nowIso()).run();
+  const failures = [];
+  const works = narrative.works;
+
+  const branchOutput = await withRetry(async (prior) => {
+    const payload = await runNarrativeChunk(env, {
+      type: 'branches', locale, topic,
+      branches: narrative.branches.map((branch) => ({ id: branch.id, source_work_ids: branch.sourceWorkIds })),
+    }, model, prior);
+    return validateChunk(payload, 'branches', [], works, narrative.branches.map((branch) => branch.id));
+  }, failures);
+  if (!branchOutput) {
+    await logAiRun(env, runId, body.replayId, model, 'fallback', failures, null);
     return;
   }
-  await env.DB.prepare(`INSERT INTO ai_runs (id,replay_id,task_type,model,input_hash,output_json,status,validation_errors_json,created_at) VALUES (?,?,?,?,?,?,'complete','[]',?)`)
-    .bind(runId, body.replayId, 'GENERATE_NARRATIVE', output.model, inputHash, JSON.stringify(output.payload), nowIso()).run();
+
+  const eventOutput = [];
+  let eventsOk = true;
+  for (const batch of chunk(narrative.events, 4)) {
+    const output = await withRetry(async (prior) => {
+      const payload = await runNarrativeChunk(env, {
+        type: 'events', locale, topic, works,
+        events: batch.map((event) => ({ id: event.id, type: event.eventType, date: event.eventDate, source_work_ids: event.sourceWorkIds, confidence: event.confidence })),
+      }, model, prior);
+      return validateChunk(payload, 'events', batch, works, batch.map((event) => event.id));
+    }, failures);
+    if (!output) { eventsOk = false; break; }
+    eventOutput.push(...output);
+  }
+
+  const questionsOutput = await withRetry(async (prior) => {
+    const payload = await runNarrativeChunk(env, { type: 'questions', locale, topic }, model, prior);
+    return validateChunk(payload, 'questions', [], works, []);
+  }, failures);
+
   const statements = [];
-  for (const branch of output.payload.branches) statements.push(env.DB.prepare('UPDATE branches SET label=?,description=?,ai_generated=1 WHERE id=? AND replay_id=?').bind(branch.label, branch.description, branch.branch_id, body.replayId));
-  for (const event of output.payload.events) statements.push(env.DB.prepare(`UPDATE events SET title=?,summary=?,selection_reason=?,confidence=?,requires_review=?,source_work_ids_json=?,ai_generated=1 WHERE id=? AND replay_id=?`)
+  for (const branch of branchOutput) statements.push(env.DB.prepare('UPDATE branches SET label=?,description=?,ai_generated=1 WHERE id=? AND replay_id=?').bind(branch.label, branch.description, branch.branch_id, body.replayId));
+  for (const event of eventOutput) statements.push(env.DB.prepare(`UPDATE events SET title=?,summary=?,selection_reason=?,confidence=?,requires_review=?,source_work_ids_json=?,ai_generated=1 WHERE id=? AND replay_id=?`)
     .bind(event.title, event.summary, event.selection_reason, event.confidence, event.requires_review ? 1 : 0, JSON.stringify(event.source_work_ids), event.event_id, body.replayId));
-  statements.push(env.DB.prepare('UPDATE replays SET open_questions_json=? WHERE id=?').bind(JSON.stringify(output.payload.open_questions.slice(0, 5)), body.replayId));
+  if (questionsOutput && questionsOutput.length) statements.push(env.DB.prepare('UPDATE replays SET open_questions_json=? WHERE id=?').bind(JSON.stringify(questionsOutput.slice(0, 5)), body.replayId));
   await batchStatements(env, statements);
+
+  await logAiRun(env, runId, body.replayId, model, eventsOk ? 'complete' : 'partial', failures, { branches: branchOutput, events: eventOutput, open_questions: questionsOutput || [] });
 }
 
 async function finalizeStage(env, body) {
