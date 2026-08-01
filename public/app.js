@@ -82,7 +82,7 @@ function switchLocale() {
 
 function siteHeader() {
   return `<header class="site-header"><div class="container nav">
-    <a class="brand" href="/" data-nav><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>OncoReplay</span></a>
+    <a class="brand" href="/" data-nav><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>OncoReplay</span><span class="brand-tag">${L('肿瘤研究时光机','A research time machine')}</span></a>
     <nav class="nav-links" aria-label="${L('主导航','Primary navigation')}">
       <a class="nav-link" href="/explore" data-nav>${L('探索','Explore')}</a>
       <a class="nav-link" href="/methodology" data-nav>${L('方法','Methodology')}</a>
@@ -111,7 +111,6 @@ function renderHome() {
   document.title = L('OncoReplay — 肿瘤研究时光机','OncoReplay — Watch a cancer research idea evolve');
   app.innerHTML = `<div class="shell">${siteHeader()}<main id="main">
     <section class="hero">${heroNetwork()}<div class="container hero-content">
-      <span class="eyebrow">${L('肿瘤研究时光机','A research time machine')}</span>
       <h1 class="display">${L('看一个肿瘤研究想法如何','Watch a cancer research idea')} <em>${L('演化。','evolve.')}</em></h1>
       <p class="lede">${L('把论文、引用、争议和临床转化串成一条互动时间线，随时暂停、点开核查、转发分享。','Turn papers, citations, controversies, and clinical translation into an interactive timeline you can pause, inspect, and share.')}</p>
       <form class="search-panel" id="home-search"><input id="home-query" name="query" autocomplete="off" aria-label="${L('研究主题','Research topic')}" placeholder='${L('试试“YAP1 与 EGFR-TKI 耐药”','Try “YAP1 and EGFR-TKI resistance”')}' /><button class="button primary" type="submit">${L('生成回放','Generate replay')} ${icons.arrow}</button></form>
