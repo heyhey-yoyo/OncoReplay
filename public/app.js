@@ -36,6 +36,8 @@ const icons = {
   close: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="m4 4 10 10M14 4 4 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
   back: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M14 9H4m4-4L4 9l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   share: '<svg aria-hidden="true" width="17" height="17" viewBox="0 0 18 18" fill="none"><circle cx="13.5" cy="4.5" r="2" stroke="currentColor"/><circle cx="4.5" cy="9" r="2" stroke="currentColor"/><circle cx="13.5" cy="13.5" r="2" stroke="currentColor"/><path d="m6.3 8.1 5.4-2.7M6.3 9.9l5.4 2.7" stroke="currentColor"/></svg>',
+  chevron: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  check: '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 };
 
 const palette = ['#70e2d1','#a6a0ff','#f1b96c','#8fdaa7','#ef8daa','#78aef0'];
@@ -63,6 +65,44 @@ const builtinTranslations = {
     'event-12': ['研究进入拥挤但未解决的当下','多个临床项目、生物标志物方向和耐药假说并存。当前视图强调开放问题，而不是宣布赢家或科学共识。','四条分支仍然活跃，没有单一分支主导全部指标。'],
   },
 };
+
+// TCGA 癌种分类（含泛癌），id 为 TCGA 研究缩写；提交时用英文名，服务端会拼进检索主题。
+const tcgaTypes = [
+  { id: 'PANCAN', zh: '泛癌（Pan-Cancer）', en: 'Pan-cancer' },
+  { id: 'ACC', zh: '肾上腺皮质癌', en: 'Adrenocortical carcinoma' },
+  { id: 'BLCA', zh: '膀胱尿路上皮癌', en: 'Bladder urothelial carcinoma' },
+  { id: 'BRCA', zh: '乳腺浸润癌', en: 'Breast invasive carcinoma' },
+  { id: 'CESC', zh: '宫颈鳞癌与宫颈腺癌', en: 'Cervical squamous cell carcinoma and endocervical adenocarcinoma' },
+  { id: 'CHOL', zh: '胆管癌', en: 'Cholangiocarcinoma' },
+  { id: 'COAD', zh: '结肠腺癌', en: 'Colon adenocarcinoma' },
+  { id: 'DLBC', zh: '弥漫大 B 细胞淋巴瘤', en: 'Diffuse large B-cell lymphoma' },
+  { id: 'ESCA', zh: '食管癌', en: 'Esophageal carcinoma' },
+  { id: 'GBM', zh: '胶质母细胞瘤', en: 'Glioblastoma multiforme' },
+  { id: 'HNSC', zh: '头颈鳞状细胞癌', en: 'Head and neck squamous cell carcinoma' },
+  { id: 'KICH', zh: '肾嫌色细胞癌', en: 'Kidney chromophobe' },
+  { id: 'KIRC', zh: '肾透明细胞癌', en: 'Kidney renal clear cell carcinoma' },
+  { id: 'KIRP', zh: '肾乳头状细胞癌', en: 'Kidney renal papillary cell carcinoma' },
+  { id: 'LAML', zh: '急性髓系白血病', en: 'Acute myeloid leukemia' },
+  { id: 'LGG', zh: '脑低级别胶质瘤', en: 'Brain lower grade glioma' },
+  { id: 'LIHC', zh: '肝细胞癌', en: 'Liver hepatocellular carcinoma' },
+  { id: 'LUAD', zh: '肺腺癌', en: 'Lung adenocarcinoma' },
+  { id: 'LUSC', zh: '肺鳞状细胞癌', en: 'Lung squamous cell carcinoma' },
+  { id: 'MESO', zh: '间皮瘤', en: 'Mesothelioma' },
+  { id: 'OV', zh: '卵巢浆液性囊腺癌', en: 'Ovarian serous cystadenocarcinoma' },
+  { id: 'PAAD', zh: '胰腺腺癌', en: 'Pancreatic adenocarcinoma' },
+  { id: 'PCPG', zh: '嗜铬细胞瘤和副神经节瘤', en: 'Pheochromocytoma and paraganglioma' },
+  { id: 'PRAD', zh: '前列腺腺癌', en: 'Prostate adenocarcinoma' },
+  { id: 'READ', zh: '直肠腺癌', en: 'Rectum adenocarcinoma' },
+  { id: 'SARC', zh: '肉瘤', en: 'Sarcoma' },
+  { id: 'SKCM', zh: '皮肤黑色素瘤', en: 'Skin cutaneous melanoma' },
+  { id: 'STAD', zh: '胃腺癌', en: 'Stomach adenocarcinoma' },
+  { id: 'TGCT', zh: '睾丸生殖细胞肿瘤', en: 'Testicular germ cell tumors' },
+  { id: 'THCA', zh: '甲状腺癌', en: 'Thyroid carcinoma' },
+  { id: 'THYM', zh: '胸腺瘤', en: 'Thymoma' },
+  { id: 'UCEC', zh: '子宫内膜癌', en: 'Uterine corpus endometrial carcinoma' },
+  { id: 'UCS', zh: '子宫癌肉瘤', en: 'Uterine carcinosarcoma' },
+  { id: 'UVM', zh: '葡萄膜黑色素瘤', en: 'Uveal melanoma' },
+];
 
 function routePath() { return window.location.pathname.replace(/\/+$/, '') || '/'; }
 function replaySlugFromPath(path = routePath()) { return path.match(/^\/replay\/([a-z0-9-]+)$/)?.[1] || null; }
@@ -136,9 +176,9 @@ function renderCreate() {
       <form class="form-card form-stack" id="create-form">
         <div class="field"><label for="topic">${L('研究主题','Research topic')}</label><textarea class="textarea" id="topic" name="topic" maxlength="240" required placeholder="KRAS G12D inhibitors in pancreatic cancer">${escapeHtml(initialQuery)}</textarea><span class="field-help">${L('当前版本使用英文主题检索通常更稳定；结果界面和叙事默认为中文。','English topics usually produce more stable scholarly retrieval; the interface can remain bilingual.')}</span></div>
         <div class="inline-fields"><div class="field"><label for="start-year">${L('开始年份','Start year')}</label><input class="input" id="start-year" name="startYear" type="number" min="1900" max="2026" placeholder="2006" /></div><div class="field"><label for="end-year">${L('结束年份','End year')}</label><input class="input" id="end-year" name="endYear" type="number" min="1900" max="2026" value="2026" /></div></div>
-        <div class="field"><label for="cancer-type">${L('癌种（可选）','Cancer type (optional)')}</label><input class="input" id="cancer-type" name="cancerType" placeholder="Pancreatic cancer" /></div>
-        <div class="field"><label>${L('关注角度','Viewing angle')}</label><div class="angle-picker"><label><input type="radio" name="angle" value="mechanism"><span>${L('机制','Mechanism')}</span></label><label><input type="radio" name="angle" value="translation"><span>${L('转化','Translation')}</span></label><label><input type="radio" name="angle" value="controversy"><span>${L('争议','Controversy')}</span></label><label><input type="radio" name="angle" value="all" checked><span>${L('全部','All')}</span></label></div></div>
-        <div class="inline-fields"><div class="field"><label for="max-works">${L('最大论文量','Maximum works')}</label><select class="select" id="max-works" name="maxWorks"><option>100</option><option selected>200</option><option>300</option><option>500</option></select></div><div class="field"><label for="exclude">${L('排除词','Exclude terms')}</label><input class="input" id="exclude" name="exclude" placeholder="review, protocol" /></div></div>
+        <div class="field"><label for="cancer-type">${L('癌种（可选）','Cancer type (optional)')}</label><div class="dropdown"><input type="hidden" name="cancerType" value="" /><button class="dropdown-trigger" id="cancer-type" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="cancer-list"><span class="dropdown-value placeholder">${L('不限','Any')}</span>${icons.chevron}</button><div class="dropdown-panel" hidden><input class="dropdown-search" type="text" placeholder="${L('搜索癌种，如“lung / 肺”','Search cancer type, e.g. “lung”')}" aria-label="${L('搜索癌种','Search cancer type')}" /><ul class="dropdown-list" id="cancer-list" role="listbox" aria-label="${L('癌种（参考 TCGA 分类）','Cancer types (TCGA)')}">${tcgaOptionsMarkup()}</ul></div></div></div>
+        <div class="field"><label>${L('关注角度','Viewing angle')}</label><div class="seg-picker"><label><input type="radio" name="angle" value="mechanism"><span>${L('机制','Mechanism')}</span></label><label><input type="radio" name="angle" value="translation"><span>${L('转化','Translation')}</span></label><label><input type="radio" name="angle" value="controversy"><span>${L('争议','Controversy')}</span></label><label><input type="radio" name="angle" value="all" checked><span>${L('全部','All')}</span></label></div></div>
+        <div class="inline-fields"><div class="field"><label>${L('最大论文量','Maximum works')}</label><div class="seg-picker"><label><input type="radio" name="maxWorks" value="100"><span>100</span></label><label><input type="radio" name="maxWorks" value="200" checked><span>200</span></label><label><input type="radio" name="maxWorks" value="300"><span>300</span></label><label><input type="radio" name="maxWorks" value="500"><span>500</span></label></div></div><div class="field"><label for="exclude">${L('排除词','Exclude terms')}</label><input class="input" id="exclude" name="exclude" placeholder="review, protocol" /></div></div>
         <div class="callout">${L('请勿输入可识别患者身份或其他机密信息。本工具面向研究主题，不进行患者级分析。','Do not enter patient-identifiable or confidential information. This tool is for research topics, not patient-level analysis.')}</div>
         <div class="form-actions"><button class="button primary" type="submit">${L('预览检索结果','Preview query')} ${icons.arrow}</button><a class="button ghost" href="/replay/kras-g12d" data-nav>${L('使用内置示例','Use the built-in example')}</a></div>
       </form>
@@ -146,6 +186,7 @@ function renderCreate() {
     </section>
   </main>${footer()}</div>`;
   bindCommonNavigation();
+  bindCancerDropdown();
   const form = document.querySelector('#create-form');
   form?.addEventListener('submit', handleQueryPreview);
   if (initialQuery) setTimeout(() => form?.requestSubmit(), 180);
@@ -154,6 +195,64 @@ function renderCreate() {
 function formPayload(form) {
   const data = Object.fromEntries(new FormData(form).entries());
   return { topic:data.topic, startYear:data.startYear ? Number(data.startYear) : undefined, endYear:data.endYear ? Number(data.endYear) : undefined, cancerType:data.cancerType || undefined, angle:data.angle, maxWorks:Number(data.maxWorks || 200), exclude:data.exclude || undefined, locale:state.locale };
+}
+
+function tcgaOptionsMarkup() {
+  const items=[{ id:'', zh:L('不限','Any'), en:L('不限','Any') },...tcgaTypes];
+  return items.map(item=>`<li class="dropdown-option" role="option" data-value="${escapeHtml(item.id)}" tabindex="-1" aria-selected="false"><span class="abbr">${escapeHtml(item.id)}</span><span class="name">${escapeHtml(L(item.zh,item.en))}</span><span class="check">${icons.check}</span></li>`).join('');
+}
+
+function bindCancerDropdown() {
+  const dropdown=document.querySelector('.dropdown'); if(!dropdown) return;
+  const trigger=dropdown.querySelector('.dropdown-trigger');
+  const panel=dropdown.querySelector('.dropdown-panel');
+  const search=dropdown.querySelector('.dropdown-search');
+  const list=dropdown.querySelector('.dropdown-list');
+  const label=dropdown.querySelector('.dropdown-value');
+  const hidden=dropdown.querySelector('input[name="cancerType"]');
+  const items=[{ id:'', zh:L('不限','Any'), en:L('不限','Any') },...tcgaTypes];
+  const anyLabel=L('不限','Any');
+  const visible=()=>[...list.querySelectorAll('.dropdown-option')].filter(option=>!option.hidden);
+  const close=()=>{ panel.hidden=true; trigger.setAttribute('aria-expanded','false'); };
+  const open=()=>{ panel.hidden=false; trigger.setAttribute('aria-expanded','true'); search.value=''; filterOptions(''); search.focus(); };
+  function filterOptions(query) {
+    const q=query.trim().toLowerCase(); let count=0;
+    list.querySelectorAll('.dropdown-option').forEach(option=>{
+      const item=items.find(item=>item.id===option.dataset.value);
+      const text=(item?`${item.id} ${item.zh} ${item.en}`:anyLabel).toLowerCase();
+      const match=!q||text.includes(q); option.hidden=!match; if(match)count++;
+    });
+    list.querySelector('.dropdown-empty')?.remove();
+    if(!count) list.insertAdjacentHTML('beforeend',`<li class="dropdown-empty">${L('没有匹配的癌种','No matching cancer type')}</li>`);
+  }
+  function select(option) {
+    const item=items.find(item=>item.id===option.dataset.value);
+    hidden.value=item?.en||'';
+    label.textContent=item?L(item.zh,item.en):anyLabel;
+    label.classList.toggle('placeholder',!item);
+    list.querySelectorAll('.dropdown-option').forEach(other=>other.setAttribute('aria-selected',String(other===option)));
+    close(); trigger.focus();
+  }
+  trigger.addEventListener('click',()=>{ panel.hidden?open():close(); });
+  trigger.addEventListener('keydown',(event)=>{ if(event.isComposing)return; if(panel.hidden&&(event.key==='Enter'||event.key===' '||event.key==='ArrowDown')){ event.preventDefault(); open(); } });
+  search.addEventListener('input',()=>filterOptions(search.value));
+  search.addEventListener('keydown',(event)=>{ if(event.isComposing)return; if(event.key==='Escape'){ event.preventDefault(); close(); trigger.focus(); } });
+  panel.addEventListener('keydown',(event)=>{
+    if(event.isComposing)return;
+    const options=visible();
+    if(event.key==='Escape'){ event.preventDefault(); close(); trigger.focus(); return; }
+    if(!options.length)return;
+    const index=options.findIndex(option=>option===document.activeElement);
+    if(event.key==='ArrowDown'){ event.preventDefault(); options[(index+1)%options.length].focus(); }
+    else if(event.key==='ArrowUp'){ event.preventDefault(); options[(index-1+options.length)%options.length].focus(); }
+    else if(event.key==='Home'){ event.preventDefault(); options[0].focus(); }
+    else if(event.key==='End'){ event.preventDefault(); options[options.length-1].focus(); }
+    else if(event.key==='Enter'){ event.preventDefault(); select(options[Math.max(0,index)]); }
+  });
+  list.addEventListener('click',(event)=>{ const option=event.target.closest('.dropdown-option'); if(option) select(option); });
+  if(state.cancerDropdownOutside) document.removeEventListener('click',state.cancerDropdownOutside);
+  state.cancerDropdownOutside=(event)=>{ if(!dropdown.contains(event.target)) close(); };
+  document.addEventListener('click',state.cancerDropdownOutside);
 }
 
 async function handleQueryPreview(event) {
