@@ -143,7 +143,8 @@ async function fetchWorksStage(env, body) {
   const context = await replayContext(env, body.replayId);
   const topic = context.replay.normalized_query;
   const excludedTerms = String(context.filters.exclude || '').split(/[,;，；]/).map((value) => value.trim().toLowerCase()).filter(Boolean);
-  const maxWorks = Math.min(500, Math.max(40, Number(context.filters.maxWorks || body.maxWorks || 200)));
+  const requestedMaxWorks = Number(context.filters.maxWorks ?? body.maxWorks ?? 200);
+  const maxWorks = Number.isFinite(requestedMaxWorks) ? Math.min(500, Math.max(40, requestedMaxWorks)) : 200;
   const searchOptions = { startYear: context.replay.start_year, endYear: context.replay.end_year, perPage: Math.min(100, maxWorks) };
   // 组合检索(主题+癌种+方向)会过窄时逐级回退:癌种/方向拼进 OpenAlex 全文 search 后,
   // 可能只剩少量全文提及的旁路论文,被 topicAffinity 门滤掉后种子不足。回退到更宽的

@@ -1,7 +1,7 @@
 import { expandCancerType } from './lib/cancer-types.js';
 import { searchOpenAlex } from './lib/clients.js';
 import { cleanupExpiredReplays, getReplayPayload, processPipelineMessage } from './lib/pipeline.js';
-import { CURRENT_YEAR, nowIso, normalizeTopic, sha256, slugify } from './lib/utils.js';
+import { CURRENT_YEAR, nowIso, normalizeTopic, sha256, slugify, truncate } from './lib/utils.js';
 
 const JSON_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
@@ -41,15 +41,22 @@ function suggestSynonyms(topic) {
   return [...new Set(suggestions)].slice(0, 6);
 }
 
+function toFiniteYear(value) {
+  if (value === undefined || value === null || value === '') return undefined;
+  const year = Number(value);
+  return Number.isFinite(year) ? year : undefined;
+}
+
 function validateInput(body) {
   const topic = normalizeTopic(body?.topic);
   if (topic.length < 3) return { ok: false, message: '研究主题至少需要 3 个字符。' };
-  const startYear = body?.startYear ? Number(body.startYear) : undefined;
-  const endYear = body?.endYear ? Number(body.endYear) : undefined;
-  if (startYear && (startYear < 1900 || startYear > CURRENT_YEAR)) return { ok: false, message: '开始年份超出支持范围。' };
-  if (endYear && (endYear < 1900 || endYear > CURRENT_YEAR)) return { ok: false, message: '结束年份超出支持范围。' };
-  if (startYear && endYear && startYear > endYear) return { ok: false, message: '开始年份不能晚于结束年份。' };
-  const maxWorks = Math.min(500, Math.max(40, Number(body?.maxWorks || 200)));
+  const startYear = toFiniteYear(body?.startYear);
+  const endYear = toFiniteYear(body?.endYear);
+  if (startYear !== undefined && (startYear < 1900 || startYear > CURRENT_YEAR)) return { ok: false, message: '开始年份超出支持范围。' };
+  if (endYear !== undefined && (endYear < 1900 || endYear > CURRENT_YEAR)) return { ok: false, message: '结束年份超出支持范围。' };
+  if (startYear !== undefined && endYear !== undefined && startYear > endYear) return { ok: false, message: '开始年份不能晚于结束年份。' };
+  const rawMaxWorks = Number(body?.maxWorks ?? 200);
+  const maxWorks = Number.isFinite(rawMaxWorks) ? Math.min(500, Math.max(40, rawMaxWorks)) : 200;
   const angle = ['mechanism','translation','controversy','all'].includes(body?.angle) ? body.angle : 'all';
   const locale = body?.locale === 'en' ? 'en' : 'zh';
   return {
@@ -126,7 +133,18 @@ async function createReplay(env, request, requestId) {
   const jobId = crypto.randomUUID();
   await env.DB.prepare(`INSERT INTO jobs (id,replay_id,job_type,status,progress_current,progress_total,attempts,created_at,updated_at) VALUES (?,?,'FETCH_WORKS','queued',0,5,0,?,?)`)
     .bind(jobId, id, now, now).run();
-  await env.REPLAY_QUEUE.send({ type: 'FETCH_WORKS', replayId: id, jobId, topic: input.topic, maxWorks: input.maxWorks, locale: input.locale });
+  try {
+    await env.REPLAY_QUEUE.send({ type: 'FETCH_WORKS', replayId: id, jobId, topic: input.topic, maxWorks: input.maxWorks, locale: input.locale });
+  } catch (cause) {
+    // 队列提交失败:回放与任务行已入库但永远不会被消费,立即标记失败,
+    // 否则回放会一直停在 'queued',前端轮询也永远等不到结果。
+    const message = truncate(String(cause?.message || '未知错误'), 500);
+    await env.DB.batch([
+      env.DB.prepare(`UPDATE jobs SET status='failed',error_code='QUEUE_SEND_FAILED',error_message=?,updated_at=? WHERE id=?`).bind(message, now, jobId),
+      env.DB.prepare(`UPDATE replays SET status='failed',updated_at=? WHERE id=?`).bind(now, id),
+    ]);
+    return error('QUEUE_SEND_FAILED', '回放已创建但未能提交到处理队列，请稍后重试。', 503, requestId);
+  }
   return json({ replayId: id, slug, status: 'queued', requestId }, { status: 202, headers: { 'x-request-id': requestId } });
 }
 
@@ -165,7 +183,16 @@ async function retryReplay(env, slug, requestId) {
   if (!row.job_id) await env.DB.prepare(`INSERT INTO jobs (id,replay_id,job_type,status,progress_current,progress_total,attempts,created_at,updated_at) VALUES (?,?,'FETCH_WORKS','queued',0,5,0,?,?)`).bind(jobId, row.id, nowIso(), nowIso()).run();
   else await env.DB.prepare(`UPDATE jobs SET job_type='FETCH_WORKS',status='queued',progress_current=0,progress_total=5,error_code=NULL,error_message=NULL,updated_at=? WHERE id=?`).bind(nowIso(), jobId).run();
   await env.DB.prepare(`UPDATE replays SET status='queued',updated_at=? WHERE id=?`).bind(nowIso(), row.id).run();
-  await env.REPLAY_QUEUE.send({ type: 'FETCH_WORKS', replayId: row.id, jobId, topic: row.normalized_query, locale: row.locale || 'zh' });
+  try {
+    await env.REPLAY_QUEUE.send({ type: 'FETCH_WORKS', replayId: row.id, jobId, topic: row.normalized_query, locale: row.locale || 'zh' });
+  } catch (cause) {
+    const message = truncate(String(cause?.message || '未知错误'), 500);
+    await env.DB.batch([
+      env.DB.prepare(`UPDATE jobs SET status='failed',error_code='QUEUE_SEND_FAILED',error_message=?,updated_at=? WHERE id=?`).bind(message, nowIso(), jobId),
+      env.DB.prepare(`UPDATE replays SET status='failed',updated_at=? WHERE id=?`).bind(nowIso(), row.id),
+    ]);
+    return error('QUEUE_SEND_FAILED', '重试任务未能提交到处理队列，请稍后再试。', 503, requestId);
+  }
   return json({ slug, status: 'queued', requestId }, { status: 202 });
 }
 

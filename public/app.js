@@ -9,6 +9,8 @@ import {
 } from './core.mjs';
 
 const app = document.querySelector('#app');
+// 生成状态自动轮询预算:约 10 分钟后停止轮询,避免回放卡在 'queued'/'processing' 时页面无限请求
+const MAX_STATUS_POLLS = 240;
 const state = {
   replay: null,
   replaySlug: null,
@@ -24,6 +26,8 @@ const state = {
   statusTimer: null,
   locale: localStorage.getItem('oncoreplay-locale') === 'en' ? 'en' : 'zh',
   pendingCreateData: null,
+  pollAttempts: 0,
+  builtinRaw: null,
 };
 
 document.documentElement.lang = state.locale === 'zh' ? 'zh-CN' : 'en';
@@ -318,13 +322,25 @@ async function fetchStatus(slug) {
 }
 
 async function loadReplay(slug) {
-  if(state.replay && state.replaySlug===slug) return state.replay;
+  if(state.replay && state.replaySlug===slug) {
+    // 缓存命中:内置示例按当前语言重新本地化(locale 切换时生效),保留播放位置
+    if(slug==='kras-g12d' && state.builtinRaw) {
+      const year=state.currentYear;
+      const selected=state.selectedEventId;
+      state.replay=localizeBuiltinReplay(state.builtinRaw);
+      state.currentYear=year;
+      state.selectedEventId=selected;
+    }
+    return state.replay;
+  }
   const response=slug==='kras-g12d' ? await fetch('/data/kras-g12d.json') : await fetch(`/api/replays/${slug}`);
   const result=await response.json().catch(()=>({}));
   if(response.status===202) return null;
   if(!response.ok) throw new Error(result?.error?.message || L('回放数据无法加载。','Replay data could not be loaded.'));
+  if(slug==='kras-g12d') state.builtinRaw=result;
   state.replay=slug==='kras-g12d' ? localizeBuiltinReplay(result) : result;
   state.replaySlug=slug;
+  state.pollAttempts=0;
   state.currentYear=state.replay.startYear;
   const requestedEvent=new URLSearchParams(window.location.search).get('event');
   state.selectedEventId=state.replay.events.find(item=>item.id===requestedEvent)?.id ?? state.replay.events[0]?.id ?? null;
@@ -348,6 +364,19 @@ function generationMarkup(slug,status) {
   return `<div class="shell">${siteHeader()}<main id="main"><section class="page-hero"><div class="container"><span class="eyebrow">${failed?L('生成失败','Generation failed'):L('正在生成回放','Building replay')}</span><h1>${failed?L('生成过程停在了可以恢复的阶段。','The pipeline stopped at a recoverable stage.'):L('正在重建研究时间线。','Reconstructing the research timeline.')}</h1><p>${failed?escapeHtml(status.error?.message||L('请查看 Worker 日志。','Check Worker logs.')):escapeHtml(stageLabel(status.stage))}</p></div></section><section class="container" style="padding-bottom:100px"><div class="form-card" style="max-width:820px"><div style="height:10px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--cyan),var(--violet));transition:width .4s"></div></div><div style="display:flex;justify-content:space-between;margin:14px 0 28px;color:var(--muted);font-size:13px"><span>${escapeHtml(stageLabel(status.stage))}</span><span>${Math.max(1,current)}/${total}</span></div>${Object.entries(stageLabels).map(([key,labels],index)=>`<div class="pipeline-step ${index<activeIndex?'done':index===activeIndex?'active':''}"><span class="pipeline-dot"></span><span>${L(labels[0],labels[1])}</span></div>`).join('')}${failed?`<div class="form-actions" style="margin-top:24px"><button class="button primary" id="retry-replay">${L('从头重试','Retry from start')}</button><a class="button ghost" href="/create" data-nav>${L('返回创建页','Back to create')}</a></div>`:`<p class="field-help" style="margin-top:22px">${L('页面会自动刷新。你也可以收藏这个网址稍后回来；已完成的部分不会丢失。','This page refreshes automatically. You can save the URL; completed stages are persisted in D1.')}</p>`}</div></section></main>${footer()}</div>`;
 }
 
+// 生成状态轮询带预算:MAX_STATUS_POLLS 次后停止自动轮询,
+// 防止回放卡在 'queued'/'processing' 时页面无限请求;用户可手动"检查状态"恢复。
+function scheduleStatusPoll(delayMs) {
+  if(state.pollAttempts>=MAX_STATUS_POLLS) return false;
+  state.pollAttempts+=1;
+  state.statusTimer=setTimeout(renderReplay,delayMs);
+  return true;
+}
+
+function stuckMarkup() {
+  return `<div class="shell">${siteHeader()}<main id="main"><section class="page-hero"><div class="container"><span class="eyebrow">${L('仍在处理','Still processing')}</span><h1>${L('回放仍在后台生成中。','This replay is still being generated in the background.')}</h1><p>${L('生成步骤较多时可能需要几分钟。自动轮询已暂停，你可以稍后手动刷新本页查看结果；已完成的数据不会丢失。','Generation can take a few minutes. Automatic polling has paused — refresh this page later to check; completed stages are persisted in D1.')}</p></div></section><section class="container" style="padding-bottom:100px"><div class="form-card" style="max-width:820px"><div class="form-actions"><button class="button primary" id="check-status">${L('检查状态','Check status')}</button><a class="button ghost" href="/" data-nav>${L('返回首页','Return home')}</a></div></div></section></main>${footer()}</div>`;
+}
+
 async function renderReplay() {
   const slug=replaySlugFromPath();
   if(!slug) return renderNotFound();
@@ -358,9 +387,18 @@ async function renderReplay() {
     try {
       const status=await fetchStatus(slug);
       if(status.status!=='complete') {
+        if(status.status==='failed') {
+          app.innerHTML=generationMarkup(slug,status); bindCommonNavigation();
+          document.querySelector('#retry-replay')?.addEventListener('click',()=>retryReplay(slug));
+          return;
+        }
+        if(!scheduleStatusPoll(2600)) {
+          app.innerHTML=stuckMarkup(); bindCommonNavigation();
+          document.querySelector('#check-status')?.addEventListener('click',()=>{state.pollAttempts=0;renderReplay();});
+          return;
+        }
         app.innerHTML=generationMarkup(slug,status); bindCommonNavigation();
         document.querySelector('#retry-replay')?.addEventListener('click',()=>retryReplay(slug));
-        if(status.status!=='failed') state.statusTimer=setTimeout(renderReplay,2600);
         return;
       }
     } catch(error) { app.innerHTML=`<div class="replay-shell"><div class="empty-state"><h1>${L('回放不可用','Replay unavailable')}</h1><p>${escapeHtml(error.message)}</p><a class="button" href="/" data-nav>${L('返回首页','Return home')}</a></div></div>`; bindCommonNavigation(); return; }
@@ -368,7 +406,12 @@ async function renderReplay() {
   app.innerHTML=`<div class="replay-shell"><div class="empty-state">${L('正在加载回放…','Loading replay…')}</div></div>`;
   try {
     const replay=await loadReplay(slug);
-    if(!replay){state.statusTimer=setTimeout(renderReplay,1800);return;}
+    if(!replay){
+      if(scheduleStatusPoll(1800)) return;
+      app.innerHTML=stuckMarkup(); bindCommonNavigation();
+      document.querySelector('#check-status')?.addEventListener('click',()=>{state.pollAttempts=0;renderReplay();});
+      return;
+    }
     document.title=`${replay.title} — OncoReplay`;
     app.innerHTML=replayMarkup(replay); bindReplay();
     if(window.innerWidth<=760 && replay.events[0]) state.currentYear=replay.events[0].year;
@@ -378,7 +421,7 @@ async function renderReplay() {
 }
 
 async function retryReplay(slug) {
-  try { const response=await fetch(`/api/replays/${slug}/retry`,{method:'POST'}); const result=await response.json().catch(()=>({})); if(!response.ok) throw new Error(result?.error?.message||L('重试失败','Retry failed')); renderReplay(); }
+  try { const response=await fetch(`/api/replays/${slug}/retry`,{method:'POST'}); const result=await response.json().catch(()=>({})); if(!response.ok) throw new Error(result?.error?.message||L('重试失败','Retry failed')); state.replay=null; state.replaySlug=null; state.pollAttempts=0; renderReplay(); }
   catch(error){showToast(error.message);}
 }
 
@@ -484,5 +527,5 @@ function bindCommonNavigation(){document.querySelectorAll('[data-nav]').forEach(
 function showToast(message){const root=document.querySelector('#toast-root');if(!root)return;root.innerHTML=`<div class="toast">${escapeHtml(message)}</div>`;requestAnimationFrame(()=>root.firstElementChild?.classList.add('show'));setTimeout(()=>root.firstElementChild?.classList.remove('show'),2600);}
 function renderNotFound(){document.title=L('页面不存在 — OncoReplay','Page not found — OncoReplay');app.innerHTML=`<div class="shell">${siteHeader()}<main id="main"><div class="empty-state"><span class="eyebrow">404</span><h1>${L('这段时间线不存在。','That part of the timeline is missing.')}</h1><p>${L('请求的页面不可用。','The requested page is unavailable.')}</p><a class="button primary" href="/" data-nav>${L('返回首页','Return home')}</a></div></main>${footer()}</div>`;bindCommonNavigation();}
 
-function renderRoute(){cancelPlayback();closeDrawer();const path=routePath();if(path==='/')renderHome();else if(path==='/create')renderCreate();else if(path==='/explore')renderExplore();else if(path==='/methodology')renderMethodology();else if(path==='/about')renderAbout();else if(replaySlugFromPath(path))renderReplay();else renderNotFound();}
+function renderRoute(){cancelPlayback();closeDrawer();state.pollAttempts=0;const path=routePath();if(path==='/')renderHome();else if(path==='/create')renderCreate();else if(path==='/explore')renderExplore();else if(path==='/methodology')renderMethodology();else if(path==='/about')renderAbout();else if(replaySlugFromPath(path))renderReplay();else renderNotFound();}
 window.addEventListener('popstate',renderRoute);renderRoute();
