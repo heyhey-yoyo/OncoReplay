@@ -193,8 +193,13 @@ async function handleApi(request, env) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
+    // 免费版账户没有可用的 cron 配额,改用流量钩子触发清理:
+    // 每次新生成时必跑一次,普通访问按 0.5% 概率顺带清理(幂等、开销极小)。
     const url = new URL(request.url);
+    if ((url.pathname === '/api/replays' && request.method === 'POST') || Math.random() < 0.005) {
+      ctx.waitUntil(cleanupExpiredReplays(env));
+    }
     if (url.pathname.startsWith('/api/')) return handleApi(request, env);
     return env.ASSETS.fetch(request);
   },
