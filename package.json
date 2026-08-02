@@ -1,6 +1,6 @@
 {
   "name": "oncoreplay",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "A source-grounded bilingual oncology research timeline generator for Cloudflare Workers.",
