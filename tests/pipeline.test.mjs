@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { namespaceAnalysis, topicAffinity, validateChunk, validateNarrative } from '../src/worker/lib/pipeline.js';
+import { namespaceAnalysis, topicAffinity, buildSearchTopics, validateChunk, validateNarrative } from '../src/worker/lib/pipeline.js';
 
 test('community IDs are namespaced per replay', () => {
   const raw = {
@@ -79,4 +79,11 @@ test('topicAffinity accepts any shared token for multi-token topics', () => {
   const gate = topicAffinity('YAP1 and EGFR-TKI resistance');
   assert.equal(gate({ title: 'Acquired resistance to EGFR-TKI in NSCLC', abstract: '', topics: [], keywords: [] }), true);
   assert.equal(gate({ title: 'A tale of two pathways', abstract: 'No overlapping vocabulary here.', topics: [], keywords: [] }), false);
+});
+
+test('buildSearchTopics narrows to broad in order and dedupes', () => {
+  assert.deepEqual(buildSearchTopics('YWHAG', { cancerType: 'Stomach adenocarcinoma', angle: 'all' }), ['YWHAG Stomach adenocarcinoma', 'YWHAG']);
+  assert.deepEqual(buildSearchTopics('YWHAG', { cancerType: 'Stomach adenocarcinoma', angle: 'mechanism' }), ['YWHAG Stomach adenocarcinoma mechanism signaling pathway', 'YWHAG Stomach adenocarcinoma', 'YWHAG']);
+  assert.deepEqual(buildSearchTopics('KRAS', { cancerType: '', angle: 'all' }), ['KRAS']);
+  assert.equal(buildSearchTopics('KRAS', { cancerType: 'KRAS', angle: 'all' })[1], 'KRAS');
 });

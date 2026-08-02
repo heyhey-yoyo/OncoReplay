@@ -104,25 +104,38 @@ export function namespaceAnalysis(rawAnalysis, replayId) {
   };
 }
 
+export function buildSearchTopics(topic, { cancerType, angle } = {}) {
+  const focusTerms = angle === 'translation' ? 'clinical trial patient biomarker' : angle === 'controversy' ? 'resistance limitation toxicity challenge' : angle === 'mechanism' ? 'mechanism signaling pathway' : '';
+  return [[topic, cancerType, focusTerms].filter(Boolean).join(' '), [topic, cancerType].filter(Boolean).join(' '), topic]
+    .filter((value, index, arr) => value && arr.indexOf(value) === index);
+}
+
 async function fetchWorksStage(env, body) {
   const context = await replayContext(env, body.replayId);
   const topic = context.replay.normalized_query;
-  const focusTerms = context.filters.angle === 'translation' ? 'clinical trial patient biomarker' : context.filters.angle === 'controversy' ? 'resistance limitation toxicity challenge' : context.filters.angle === 'mechanism' ? 'mechanism signaling pathway' : '';
-  const searchTopic = [topic, context.filters.cancerType, focusTerms].filter(Boolean).join(' ');
   const excludedTerms = String(context.filters.exclude || '').split(/[,;，；]/).map((value) => value.trim().toLowerCase()).filter(Boolean);
   const maxWorks = Math.min(500, Math.max(40, Number(context.filters.maxWorks || body.maxWorks || 200)));
-  const result = await searchOpenAlex(env, {
-    topic: searchTopic,
-    startYear: context.replay.start_year,
-    endYear: context.replay.end_year,
-    perPage: Math.min(100, maxWorks),
-  });
+  const searchOptions = { startYear: context.replay.start_year, endYear: context.replay.end_year, perPage: Math.min(100, maxWorks) };
+  // 组合检索(主题+癌种+方向)会过窄时逐级回退:癌种/方向拼进 OpenAlex 全文 search 后,
+  // 可能只剩少量全文提及的旁路论文,被 topicAffinity 门滤掉后种子不足。回退到更宽的
+  // 查询,亲和门仍然基于原始主题生效,不会带回正文顺带提及的无关论文。
   const affinity = topicAffinity(topic);
-  const seeds = result.works.filter((work) => work.id && affinity(work));
+  const seeds = [];
+  const seedIds = new Set();
+  let rankTopic = topic;
+  for (const candidate of buildSearchTopics(topic, context.filters)) {
+    const result = await searchOpenAlex(env, { ...searchOptions, topic: candidate });
+    for (const work of result.works) {
+      if (!work.id || seedIds.has(work.id) || !affinity(work)) continue;
+      seedIds.add(work.id);
+      seeds.push(work);
+    }
+    if (seeds.length >= 3) { rankTopic = candidate; break; }
+  }
   if (!seeds.length) throw Object.assign(new Error('OpenAlex did not return any matching works.'), { code: 'NO_WORKS_FOUND', fatal: true });
 
   const coreSeeds = [...seeds]
-    .sort((a, b) => candidatePriority(searchTopic, b) - candidatePriority(searchTopic, a))
+    .sort((a, b) => candidatePriority(rankTopic, b) - candidatePriority(rankTopic, a))
     .slice(0, Math.min(16, seeds.length));
   const referenceIds = unique(coreSeeds.flatMap((work) => work.referencedWorks)).slice(0, Math.min(90, maxWorks));
   const relatedIds = unique(coreSeeds.flatMap((work) => work.relatedWorks)).slice(0, Math.min(50, maxWorks));
@@ -146,9 +159,9 @@ async function fetchWorksStage(env, body) {
   const candidates = [...byId.values()]
     .filter((work) => Number.isFinite(work.publicationYear))
     .filter((work) => !excludedTerms.some((term) => makeWorkText(work).toLowerCase().includes(term)))
-    .sort((a, b) => candidatePriority(searchTopic, b) - candidatePriority(searchTopic, a))
+    .sort((a, b) => candidatePriority(rankTopic, b) - candidatePriority(rankTopic, a))
     .slice(0, maxWorks);
-  if (candidates.length < 3) throw Object.assign(new Error('Too few dated works remained after filtering.'), { code: 'INSUFFICIENT_WORKS', fatal: true });
+  if (candidates.length < 3) throw Object.assign(new Error(context.replay.locale === 'en' ? 'Too few relevant works remained after filtering. Try removing the cancer-type filter, widening the year range, or broadening the topic.' : '候选论文不足,请尝试去掉癌种筛选、放宽年份范围或使用更宽泛的关键词。'), { code: 'INSUFFICIENT_WORKS', fatal: true });
   const candidateIds = new Set(candidates.map((work) => work.id));
   const relations = [];
   const relationKeys = new Set();
