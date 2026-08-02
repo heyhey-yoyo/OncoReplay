@@ -91,10 +91,10 @@ npm test
 npm run build
 ```
 
-部署后访问：
+部署后访问（Workers Builds 或 wrangler 部署均适用）：
 
 ```text
-https://你的域名/api/health
+https://oncoreplay.<你的子域>.workers.dev/api/health
 ```
 
 预期四个 binding 均为 `true`：
