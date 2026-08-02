@@ -1,6 +1,6 @@
 import { expandCancerType } from './lib/cancer-types.js';
 import { searchOpenAlex } from './lib/clients.js';
-import { getReplayPayload, processPipelineMessage } from './lib/pipeline.js';
+import { cleanupExpiredReplays, getReplayPayload, processPipelineMessage } from './lib/pipeline.js';
 import { CURRENT_YEAR, nowIso, normalizeTopic, sha256, slugify } from './lib/utils.js';
 
 const JSON_HEADERS = {
@@ -200,5 +200,8 @@ export default {
   },
   async queue(batch, env) {
     for (const message of batch.messages) await processPipelineMessage(env, message);
+  },
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(cleanupExpiredReplays(env));
   },
 };

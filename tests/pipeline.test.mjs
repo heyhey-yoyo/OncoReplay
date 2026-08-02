@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { namespaceAnalysis, topicAffinity, buildSearchTopics, validateChunk, validateNarrative } from '../src/worker/lib/pipeline.js';
+import { namespaceAnalysis, topicAffinity, buildSearchTopics, cleanupExpiredReplays, cleanupPolicy, validateChunk, validateNarrative } from '../src/worker/lib/pipeline.js';
 
 test('community IDs are namespaced per replay', () => {
   const raw = {
@@ -86,6 +86,36 @@ test('buildSearchTopics narrows to broad in order and dedupes', () => {
   assert.deepEqual(buildSearchTopics('YWHAG', { cancerType: 'Stomach adenocarcinoma', angle: 'mechanism' }), ['YWHAG (stomach adenocarcinoma OR gastric cancer OR gastric adenocarcinoma OR stomach cancer OR gastric carcinoma) mechanism signaling pathway', 'YWHAG (stomach adenocarcinoma OR gastric cancer OR gastric adenocarcinoma OR stomach cancer OR gastric carcinoma)', 'YWHAG']);
   assert.deepEqual(buildSearchTopics('KRAS', { cancerType: '', angle: 'all' }), ['KRAS']);
   assert.equal(buildSearchTopics('KRAS', { cancerType: 'KRAS', angle: 'all' })[1], 'KRAS');
+});
+
+test('cleanupPolicy cuts off at the configured retention days', () => {
+  const now = new Date('2026-08-02T12:00:00.000Z');
+  const cutoffs = cleanupPolicy({ now });
+  assert.equal(cutoffs.failedBefore, '2026-07-26T12:00:00.000Z');
+  assert.equal(cutoffs.completeBefore, '2026-05-04T12:00:00.000Z');
+  assert.equal(cutoffs.orphanWorksBefore, '2026-07-26T12:00:00.000Z');
+  assert.equal(cutoffs.orphanFeedbackBefore, '2026-05-04T12:00:00.000Z');
+});
+
+test('cleanupExpiredReplays deletes stuck, failed, complete, orphaned rows', async () => {
+  const calls = [];
+  const env = {
+    DB: {
+      prepare: (sql) => ({
+        bind: (...params) => ({
+          run: async () => { calls.push({ sql, params }); return { meta: { changes: sql.includes('feedback') ? 2 : 1 } }; },
+        }),
+      }),
+    },
+  };
+  const result = await cleanupExpiredReplays(env, { now: new Date('2026-08-02T12:00:00.000Z') });
+  assert.deepEqual(result, { failedReplaysDeleted: 1, completeReplaysDeleted: 1, orphanWorksDeleted: 1, orphanFeedbackDeleted: 2 });
+  assert.equal(calls.length, 4);
+  assert.match(calls[0].sql, /status IN \('failed','queued','processing'\)/);
+  assert.match(calls[1].sql, /status = 'complete'/);
+  assert.match(calls[2].sql, /NOT IN \(SELECT work_id FROM replay_works\)/);
+  assert.equal(calls[0].params[0], '2026-07-26T12:00:00.000Z');
+  assert.equal(await cleanupExpiredReplays({}, {}).then((r) => r.failedReplaysDeleted), 0);
 });
 
 test('expandCancerType covers every TCGA type with an OR group', async () => {

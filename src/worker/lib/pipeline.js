@@ -105,6 +105,33 @@ export function namespaceAnalysis(rawAnalysis, replayId) {
   };
 }
 
+// 定时清理保留策略:失败的/卡住的回放保留 7 天,成功回放 90 天(均衡模式)。
+// 子表(replay_works/work_relations/branches/events/jobs/ai_runs)随回放级联删除;
+// 不再被任何回放引用的孤立论文 7 天后删除;链接已失效(回放已删)的反馈 90 天后删除。
+export function cleanupPolicy({ now = new Date(), failedDays = 7, completeDays = 90, orphanWorksDays = 7, orphanFeedbackDays = 90 } = {}) {
+  const ago = (days) => new Date(now.getTime() - days * 864e5).toISOString();
+  return {
+    failedBefore: ago(failedDays),
+    completeBefore: ago(completeDays),
+    orphanWorksBefore: ago(orphanWorksDays),
+    orphanFeedbackBefore: ago(orphanFeedbackDays),
+  };
+}
+
+export async function cleanupExpiredReplays(env, options = {}) {
+  if (!env.DB) return { failedReplaysDeleted: 0, completeReplaysDeleted: 0, orphanWorksDeleted: 0, orphanFeedbackDeleted: 0 };
+  const cutoffs = cleanupPolicy(options);
+  const run = async (sql, ...params) => {
+    const result = await env.DB.prepare(sql).bind(...params).run();
+    return result?.meta?.changes ?? 0;
+  };
+  const failedReplaysDeleted = await run(`DELETE FROM replays WHERE status IN ('failed','queued','processing') AND updated_at < ?`, cutoffs.failedBefore);
+  const completeReplaysDeleted = await run(`DELETE FROM replays WHERE status = 'complete' AND updated_at < ?`, cutoffs.completeBefore);
+  const orphanWorksDeleted = await run(`DELETE FROM works WHERE fetched_at < ? AND openalex_id NOT IN (SELECT work_id FROM replay_works)`, cutoffs.orphanWorksBefore);
+  const orphanFeedbackDeleted = await run(`DELETE FROM feedback WHERE replay_id IS NULL AND created_at < ?`, cutoffs.orphanFeedbackBefore);
+  return { failedReplaysDeleted, completeReplaysDeleted, orphanWorksDeleted, orphanFeedbackDeleted };
+}
+
 export function buildSearchTopics(topic, { cancerType, angle } = {}) {
   const focusTerms = angle === 'translation' ? 'clinical trial patient biomarker' : angle === 'controversy' ? 'resistance limitation toxicity challenge' : angle === 'mechanism' ? 'mechanism signaling pathway' : '';
   const cancerTerms = expandCancerType(cancerType);
