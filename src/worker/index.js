@@ -1,3 +1,4 @@
+import { expandCancerType } from './lib/cancer-types.js';
 import { searchOpenAlex } from './lib/clients.js';
 import { getReplayPayload, processPipelineMessage } from './lib/pipeline.js';
 import { CURRENT_YEAR, nowIso, normalizeTopic, sha256, slugify } from './lib/utils.js';
@@ -67,7 +68,7 @@ function validateInput(body) {
 async function openAlexPreview(env, input, requestId) {
   if (!env.OPENALEX_API_KEY) return error('OPENALEX_NOT_CONFIGURED', '尚未设置 OPENALEX_API_KEY，无法执行真实检索预览。', 503, requestId);
   try {
-    const previewTopic = [input.topic, input.cancerType].filter(Boolean).join(' ');
+    const previewTopic = [input.topic, expandCancerType(input.cancerType)].filter(Boolean).join(' ');
     const result = await searchOpenAlex(env, { topic: previewTopic, startYear: input.startYear, endYear: input.endYear, perPage: 5 });
     const years = result.works.map((work) => work.publicationYear).filter(Number.isFinite);
     return json({

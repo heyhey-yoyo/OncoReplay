@@ -82,8 +82,20 @@ test('topicAffinity accepts any shared token for multi-token topics', () => {
 });
 
 test('buildSearchTopics narrows to broad in order and dedupes', () => {
-  assert.deepEqual(buildSearchTopics('YWHAG', { cancerType: 'Stomach adenocarcinoma', angle: 'all' }), ['YWHAG Stomach adenocarcinoma', 'YWHAG']);
-  assert.deepEqual(buildSearchTopics('YWHAG', { cancerType: 'Stomach adenocarcinoma', angle: 'mechanism' }), ['YWHAG Stomach adenocarcinoma mechanism signaling pathway', 'YWHAG Stomach adenocarcinoma', 'YWHAG']);
+  assert.deepEqual(buildSearchTopics('YWHAG', { cancerType: 'Stomach adenocarcinoma', angle: 'all' }), ['YWHAG (stomach adenocarcinoma OR gastric cancer OR gastric adenocarcinoma OR stomach cancer OR gastric carcinoma)', 'YWHAG']);
+  assert.deepEqual(buildSearchTopics('YWHAG', { cancerType: 'Stomach adenocarcinoma', angle: 'mechanism' }), ['YWHAG (stomach adenocarcinoma OR gastric cancer OR gastric adenocarcinoma OR stomach cancer OR gastric carcinoma) mechanism signaling pathway', 'YWHAG (stomach adenocarcinoma OR gastric cancer OR gastric adenocarcinoma OR stomach cancer OR gastric carcinoma)', 'YWHAG']);
   assert.deepEqual(buildSearchTopics('KRAS', { cancerType: '', angle: 'all' }), ['KRAS']);
   assert.equal(buildSearchTopics('KRAS', { cancerType: 'KRAS', angle: 'all' })[1], 'KRAS');
+});
+
+test('expandCancerType covers every TCGA type with an OR group', async () => {
+  const { expandCancerType } = await import('../src/worker/lib/cancer-types.js');
+  const names = ['Pan-cancer', 'Adrenocortical carcinoma', 'Bladder urothelial carcinoma', 'Breast invasive carcinoma', 'Cervical squamous cell carcinoma and endocervical adenocarcinoma', 'Cholangiocarcinoma', 'Colon adenocarcinoma', 'Diffuse large B-cell lymphoma', 'Esophageal carcinoma', 'Glioblastoma multiforme', 'Head and neck squamous cell carcinoma', 'Kidney chromophobe', 'Kidney renal clear cell carcinoma', 'Kidney renal papillary cell carcinoma', 'Acute myeloid leukemia', 'Brain lower grade glioma', 'Liver hepatocellular carcinoma', 'Lung adenocarcinoma', 'Lung squamous cell carcinoma', 'Mesothelioma', 'Ovarian serous cystadenocarcinoma', 'Pancreatic adenocarcinoma', 'Pheochromocytoma and paraganglioma', 'Prostate adenocarcinoma', 'Rectum adenocarcinoma', 'Sarcoma', 'Skin cutaneous melanoma', 'Stomach adenocarcinoma', 'Testicular germ cell tumors', 'Thyroid carcinoma', 'Thymoma', 'Uterine corpus endometrial carcinoma', 'Uterine carcinosarcoma', 'Uveal melanoma'];
+  for (const name of names) {
+    const group = expandCancerType(name);
+    assert.match(group, /^\(.+OR.+/i, `${name} should expand to an OR group`);
+    assert.ok(group.toLowerCase().includes(name.toLowerCase().split(' ')[0]), `${name} group should keep the base name`);
+  }
+  assert.equal(expandCancerType(''), '');
+  assert.equal(expandCancerType('Not a real type'), 'Not a real type');
 });

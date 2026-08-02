@@ -6,6 +6,7 @@ import {
   searchOpenAlex,
 } from './clients.js';
 import { analyzeReplay, makeWorkText, publicWorkType } from './analysis.js';
+import { expandCancerType } from './cancer-types.js';
 import {
   chunk,
   cosineFromCounts,
@@ -106,7 +107,8 @@ export function namespaceAnalysis(rawAnalysis, replayId) {
 
 export function buildSearchTopics(topic, { cancerType, angle } = {}) {
   const focusTerms = angle === 'translation' ? 'clinical trial patient biomarker' : angle === 'controversy' ? 'resistance limitation toxicity challenge' : angle === 'mechanism' ? 'mechanism signaling pathway' : '';
-  return [[topic, cancerType, focusTerms].filter(Boolean).join(' '), [topic, cancerType].filter(Boolean).join(' '), topic]
+  const cancerTerms = expandCancerType(cancerType);
+  return [[topic, cancerTerms, focusTerms].filter(Boolean).join(' '), [topic, cancerTerms].filter(Boolean).join(' '), topic]
     .filter((value, index, arr) => value && arr.indexOf(value) === index);
 }
 
@@ -262,7 +264,7 @@ async function buildTimelineStage(env, body) {
   const context = await replayContext(env, body.replayId);
   const allWorks = await loadPipelineWorks(env, body.replayId);
   const focusTerms = context.filters.angle === 'translation' ? 'clinical trial patient biomarker' : context.filters.angle === 'controversy' ? 'resistance limitation toxicity challenge' : context.filters.angle === 'mechanism' ? 'mechanism signaling pathway' : '';
-  const analysisTopic = [context.replay.normalized_query, context.filters.cancerType, focusTerms].filter(Boolean).join(' ');
+  const analysisTopic = [context.replay.normalized_query, expandCancerType(context.filters.cancerType), focusTerms].filter(Boolean).join(' ');
 
   // Keep the retrievable candidate pool as large as requested, but bound the O(n²)
   // graph analysis to the most relevant 220 works so it remains viable on Workers.
