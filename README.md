@@ -130,3 +130,11 @@ SETUP_ZH.md                      中文部署、升级与排错教程
 - 自定义回放使用开放学术元数据和来源约束的机器归纳，但仍可能受数据库覆盖、摘要缺失、引用偏差和聚类稳定性影响。
 - `Challenge` 是机器检测的待核查候选；`Correction` 只根据结构化来源展示，不推断学术不端。
 - 每个关键事件都应通过证据抽屉返回 DOI、PMID 或 OpenAlex 来源核查。
+
+---
+
+## AI 维护提醒
+
+> **⚠️ 任何修改此项目的 AI 代理（Claude Code、Cursor、Copilot 等）都必须同步更新本文件与 [AGENTS.md](./AGENTS.md)。**
+>
+> - `Challenge` 与 `Correction` 必须保持机器检测候选的表述边界，不得推断学术不端
