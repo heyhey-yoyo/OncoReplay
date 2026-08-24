@@ -1,0 +1,26 @@
+{
+  "name": "oncoreplay",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A source-grounded bilingual oncology research timeline generator for Cloudflare Workers.",
+  "scripts": {
+    "dev": "npm run build && wrangler dev",
+    "build": "node scripts/build.mjs",
+    "preview": "node scripts/dev-server.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "check": "node --check public/app.js && node --check public/core.mjs && node --check src/worker/index.js && node --check src/worker/lib/utils.js && node --check src/worker/lib/clients.js && node --check src/worker/lib/analysis.js && node --check src/worker/lib/pipeline.js && node --check scripts/dev-server.mjs && node --check scripts/build.mjs",
+    "deploy": "npm run build && wrangler deploy",
+    "db:local": "wrangler d1 migrations apply oncoreplay-db --local",
+    "db:remote": "wrangler d1 migrations apply oncoreplay-db --remote",
+    "deploy:demo": "npm run build && wrangler deploy --config wrangler.demo.jsonc",
+    "dev:static": "node scripts/dev-server.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}
