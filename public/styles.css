@@ -251,3 +251,5 @@ h1,h2,h3{font-family:Georgia,"Times New Roman","Songti SC","STSong",serif;font-w
 .replay-actions .button.primary{background:var(--text);color:var(--bg)}
 .demo-banner{background:#f6e9d4;border-color:rgba(165,107,43,.32);color:#7c551d;border-radius:0}
 .mobile-event{background:rgba(255,252,247,.82);border-color:var(--line);border-radius:0}
+.brand-mark{background:var(--text) url("/project-mark.svg") center/100% 100% no-repeat}
+.brand-mark i,.brand-mark::before,.brand-mark::after{display:none}

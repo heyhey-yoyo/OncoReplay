@@ -96,3 +96,8 @@ npm run deploy:demo              # 纯静态演示部署（wrangler.demo.jsonc�
 ## 界面维护约定
 
 前端使用 `ydchen-portfolio` 的米白 / 赤陶色视觉系统；视觉调整不得改变时间线可视化、双语文案、证据边界、Worker 路由或 D1 schema。
+
+
+## 标志维护约定
+
+项目标志采用统一的深灰方章、米白线条与赤陶色识别点，页面标志与 favicon 共用同一 `project-mark.svg`。后续替换必须保持原标志容器宽高，不得借机改变页眉、网格或页面布局。
