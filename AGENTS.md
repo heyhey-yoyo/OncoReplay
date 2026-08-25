@@ -92,3 +92,7 @@ npm run deploy:demo              # 纯静态演示部署（wrangler.demo.jsonc�
 > - 修改 D1 schema 必须新增 migration（`migrations/`），不得改旧文件；分支/事件 ID 需命名空间隔离
 > - 改动 AI prompt 或 schema 校验后必须通过 `npm test`（pipeline 测试强制校验不发明证据）
 > - 部署前确认 `OPENALEX_API_KEY` 已配置；`SETUP_ZH.md` 是排错权威文档
+
+## 界面维护约定
+
+前端使用 `ydchen-portfolio` 的米白 / 赤陶色视觉系统；视觉调整不得改变时间线可视化、双语文案、证据边界、Worker 路由或 D1 schema。
