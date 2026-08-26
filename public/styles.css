@@ -253,3 +253,20 @@ h1,h2,h3{font-family:Georgia,"Times New Roman","Songti SC","STSong",serif;font-w
 .mobile-event{background:rgba(255,252,247,.82);border-color:var(--line);border-radius:0}
 .brand-mark{background:var(--text) url("/project-mark.svg") center/100% 100% no-repeat}
 .brand-mark i,.brand-mark::before,.brand-mark::after{display:none}
+
+/* Warm portfolio shell; keep the replay visualization itself dark and neutral. */
+.shell::before{background:radial-gradient(circle at 12% 8%,rgba(193,95,60,.08),transparent 34%),radial-gradient(circle at 85% 20%,rgba(142,107,128,.07),transparent 32%),linear-gradient(180deg,#f3eee5 0%,#ebe4d8 48%,#f3eee5 100%)}
+.shell::after{opacity:.22;background-image:linear-gradient(rgba(36,34,31,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(36,34,31,.045) 1px,transparent 1px)}
+.site-header{background:rgba(243,238,229,.94);border-color:var(--line)}
+.button.accent{background:#f0ded4;border-color:rgba(193,95,60,.4);color:#7f3b27}
+.button.accent:hover{background:#e8cbbd;border-color:var(--cyan)}
+.card{background:linear-gradient(180deg,rgba(255,252,247,.9),rgba(240,232,222,.82));color:var(--text)}
+.card-link{color:#a94f31}
+.example-card .card-glow{opacity:.08}
+.search-panel{background:rgba(251,248,242,.9)}
+.replay-shell{background:#ebe4d8}
+.replay-header,.replay-main{background:rgba(243,238,229,.94)}
+.viz-wrap{background:radial-gradient(circle at 50% 35%,rgba(193,95,60,.045),transparent 42%),#272522}
+.legend,.viz-note,.playback{background:rgba(45,42,39,.88)}
+.drawer{background:#fbf8f2;color:var(--text)}
+.mobile-event{background:rgba(255,252,247,.82)}
