@@ -17,7 +17,10 @@
     "dev:static": "node scripts/dev-server.mjs"
   },
   "devDependencies": {
-    "wrangler": "^4.0.0"
+    "wrangler": "4.115.0"
+  },
+  "overrides": {
+    "undici": "7.29.0"
   },
   "engines": {
     "node": ">=20"
