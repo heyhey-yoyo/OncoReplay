@@ -52,8 +52,8 @@ Custom generation pipeline is scaffolded. Configure D1, Queue, and Workers AI to
 来自旧版前端硬编码提示，不是 Cloudflare 配置错误。升级本版本后，需要应用新增迁移并重新部署：
 
 ```bash
-npm install
-npx wrangler d1 migrations apply oncoreplay-db --remote
+npm ci
+npm exec -- wrangler d1 migrations apply oncoreplay-db --remote
 npm run deploy
 ```
 
@@ -64,7 +64,7 @@ npm run deploy
 要求 Node.js 20 或更高版本。
 
 ```bash
-npm install
+npm ci
 cp .dev.vars.example .dev.vars
 # 在 .dev.vars 中填写 OPENALEX_API_KEY
 npm run db:local
@@ -76,14 +76,16 @@ Wrangler 会输出本地地址。使用完整 `npm run dev` 才能测试 API、D
 ## 部署
 
 ```bash
-npx wrangler login
-npx wrangler d1 create oncoreplay-db
-npx wrangler queues create oncoreplay-replay-jobs
-npx wrangler queues create oncoreplay-replay-jobs-dlq
-npx wrangler secret put OPENALEX_API_KEY
-npx wrangler d1 migrations apply oncoreplay-db --remote
+npm exec -- wrangler login
+npm exec -- wrangler d1 create oncoreplay-db
+npm exec -- wrangler queues create oncoreplay-replay-jobs
+npm exec -- wrangler queues create oncoreplay-replay-jobs-dlq
+npm exec -- wrangler secret put OPENALEX_API_KEY
+npm exec -- wrangler d1 migrations apply oncoreplay-db --remote
 npm run deploy
 ```
+
+`package-lock.json` 固定稳定版 Wrangler 和已审计的间接依赖。安装或修复依赖时不要使用 `npm audit fix --force` 或预发布版本。
 
 创建 D1 后，把命令返回的 `database_id` 写入 `wrangler.jsonc`。同时把 `CONTACT_EMAIL` 和 `CROSSREF_MAILTO` 改为你自己的联系邮箱。
 

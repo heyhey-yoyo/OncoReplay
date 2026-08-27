@@ -41,7 +41,7 @@
 ## 运行与构建
 
 ```bash
-npm install
+npm ci
 cp .dev.vars.example .dev.vars   # 填真实 OPENALEX_API_KEY
 npm run db:local                 # 应用迁移到本地 D1
 npm run dev                      # = build + wrangler dev（完整本地环境）
@@ -50,6 +50,8 @@ npm test                         # 单元测试
 npm run deploy                   # = build + wrangler deploy
 npm run deploy:demo              # 纯静态演示部署（wrangler.demo.jsonc）
 ```
+
+`package-lock.json` 是 Worker 工具的可复现与安全基线；保持稳定 Wrangler 和已审计的间接依赖覆盖，不使用 `npm audit fix --force` 或预发布版本。
 
 注意：`npm run dev` 会先构建（复制 public 到 dist），改前端后需重新 dev 或 build 才能生效；`dist/` 是构建产物勿手改。
 
