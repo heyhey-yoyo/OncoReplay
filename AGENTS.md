@@ -19,9 +19,9 @@
 - 队列：`oncoreplay-replay-jobs`（consumer `max_batch_size: 5`、`max_retries: 3`，DLQ `-dlq`）
 - AI：Workers AI，默认 `@cf/meta/llama-3.3-70b-instruct-fp8-fast`（可用 env `AI_MODEL` 覆盖），`response_format: json_schema`
 - 静态资源：Cloudflare Assets（`assets.directory: "./dist"`，`run_worker_first: ["/api/*"]`）；构建 = 复制 `public/` → `dist/`
-- **无 Cron**（免费版配额耗尽）：清理靠"每次新生成必触发 + 普通请求 0.5% 概率"的流量钩子 + `scheduled()` 兜底
+- 无 Cron（免费版配额耗尽）：清理靠「每次新生成必触发 + 普通请求 0.5% 概率」的流量钩子 + `scheduled()` 兜底
 
-## 仓库结构
+## 项目结构
 
 | 文件 | 作用 |
 | --- | --- |
@@ -60,11 +60,20 @@ npm run deploy:demo              # 纯静态演示部署（wrangler.demo.jsonc�
 - Node 内置 `node:test`：core（回放数学）、analysis（图/Louvain/评分端到端 3–6 分支、事件必有来源论文）、pipeline（命名空间隔离、AI 输出严格校验、topicAffinity、癌种同义词全覆盖）
 - 纯函数级测试，不测 HTTP/真实 API；不依赖环境变量
 
+## 代码组织与风格约定
+
+- 依赖方向清晰无循环：utils → clients/analysis/cancer-types → pipeline → index（只做路由与校验）
+- 双语：前端 `L(zh, en)` 宏；后端规则文案维护 zh/en 两套字面量；AI prompt 带 `language` 字段与字符数约束
+- 评分公式在 `analysis.js` 的 `scoreWorks()`（relevance）与 turning-point 评分；候选排序在 `pipeline.js` 的 `candidatePriority`
+- SQL 全部手写参数绑定（`.bind()`），批量写用 `env.DB.batch`（75 条/批）
+- Worker 错误统一 `{error: {code, message, requestId}}`，响应头带 `x-request-id`；fatal 错误不重试，其余指数退避
+- ESM、中文注释（解释「为什么」）、数值取整走 `core.mjs` 纯函数
+
 ## 部署
 
 - 先决：`wrangler d1 create oncoreplay-db`（回填 `database_id`）、`wrangler queues create` ×2、`wrangler secret put OPENALEX_API_KEY`（必需，缺失时部署报错）、`wrangler d1 migrations apply --remote`，然后 `npm run deploy`
 - 部署后验证 `/api/health` 返回 `bindings: {d1:true, queue:true, ai:true, openAlex:true}`
-- 手动部署（GitHub Actions 已删除）；`wrangler.demo.jsonc` 提供无后端静态演示
+- 手动部署（不使用 GitHub Actions）；`wrangler.demo.jsonc` 提供无后端静态演示
 
 ## 安全与数据注意事项
 
@@ -75,14 +84,13 @@ npm run deploy:demo              # 纯静态演示部署（wrangler.demo.jsonc�
 - AI 安全：AI 只能用输入中的 work ID，禁止发明事实；每次调用落 `ai_runs` 审计；校验失败重试 1 次后回退规则文案（`ai_generated=0`）
 - 所有用户/AI 文本经 `escapeHtml` 渲染；外链 `rel="noreferrer"`
 
-## 代码组织与风格约定
+## 界面维护约定
 
-- 依赖方向清晰无循环：utils → clients/analysis/cancer-types → pipeline → index（只做路由与校验）
-- 双语：前端 `L(zh, en)` 宏；后端规则文案维护 zh/en 两套字面量；AI prompt 带 `language` 字段与字符数约束
-- 评分公式在 `analysis.js` 的 `scoreWorks()`（relevance）与 turning-point 评分；候选排序在 `pipeline.js` 的 `candidatePriority`
-- SQL 全部手写参数绑定（`.bind()`），批量写用 `env.DB.batch`（75 条/批）
-- Worker 错误统一 `{error: {code, message, requestId}}`，响应头带 `x-request-id`；fatal 错误不重试，其余指数退避
-- ESM、中文注释（解释"为什么"）、数值取整走 `core.mjs` 纯函数
+前端使用 `ydchen-portfolio` 的米白 / 赤陶色视觉系统；视觉调整不得改变时间线可视化、双语文案、证据边界、Worker 路由或 D1 schema。
+
+## 标志维护约定
+
+项目标志采用统一的深灰方章、米白线条与赤陶色识别点，页面标志与 favicon 共用同一 `project-mark.svg`。后续替换必须保持原标志容器宽高，不得借机改变页眉、网格或页面布局。
 
 ---
 
@@ -94,12 +102,3 @@ npm run deploy:demo              # 纯静态演示部署（wrangler.demo.jsonc�
 > - 修改 D1 schema 必须新增 migration（`migrations/`），不得改旧文件；分支/事件 ID 需命名空间隔离
 > - 改动 AI prompt 或 schema 校验后必须通过 `npm test`（pipeline 测试强制校验不发明证据）
 > - 部署前确认 `OPENALEX_API_KEY` 已配置；`SETUP_ZH.md` 是排错权威文档
-
-## 界面维护约定
-
-前端使用 `ydchen-portfolio` 的米白 / 赤陶色视觉系统；视觉调整不得改变时间线可视化、双语文案、证据边界、Worker 路由或 D1 schema。
-
-
-## 标志维护约定
-
-项目标志采用统一的深灰方章、米白线条与赤陶色识别点，页面标志与 favicon 共用同一 `project-mark.svg`。后续替换必须保持原标志容器宽高，不得借机改变页眉、网格或页面布局。
