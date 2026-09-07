@@ -1,4 +1,4 @@
-# OncoReplay — 肿瘤研究时光机（AI 代理工作指南）
+# OncoReplay（肿瘤研究时光机） — 项目说明（供 AI 编程代理阅读）
 
 本文件供 AI 编码代理使用。修改代码前请先阅读本文件。
 
@@ -25,8 +25,13 @@
 
 | 文件 | 作用 |
 | --- | --- |
+| `public/index.html` | SPA 页面结构 |
+| `public/styles.css` | 全部样式 |
 | `public/app.js` | SPA 主文件：路由、表单、轮询、回放渲染、SVG 时间线、中英切换 |
 | `public/core.mjs` | 前端纯函数：clamp/yearProgress/playbackStep/escapeHtml 等 |
+| `public/data/kras-g12d.json` | 内置 KRAS G12D 交互演示数据 |
+| `public/project-mark.svg` | 页面标志与 favicon 共用图形 |
+| `public/favicon.svg` / `public/robots.txt` | favicon 图标与抓取规则 |
 | `src/worker/index.js` | Worker 入口：路由（/api/health、/api/query/preview、/api/replays）、queue()、scheduled()、输入校验、query_hash 去重 |
 | `src/worker/lib/pipeline.js` | 五阶段状态机、候选扩展、D1 批量写入、AI Schema 校验、清理策略、回放组装 |
 | `src/worker/lib/analysis.js` | 加权图、Louvain、relevance/turning-point 评分、7 类规则事件、中英规则文案 |
@@ -35,8 +40,15 @@
 | `src/worker/lib/cancer-types.js` | 34 个 TCGA 癌种 → OpenAlex 同义词组 |
 | `migrations/` | 0001_init.sql（10 表 + 9 索引）、0002_full_pipeline.sql |
 | `scripts/build.mjs` | 构建：`public/` → `dist/` |
+| `scripts/dev-server.mjs` | 纯静态预览服务器（`dev:static` / `preview`） |
 | `tests/` | core / analysis / pipeline 三个测试文件 |
+| `wrangler.jsonc` | 主 Worker 配置（D1 / Queue / AI / Assets 绑定） |
+| `wrangler.demo.jsonc` | 无后端静态演示配置（`deploy:demo`） |
 | `SETUP_ZH.md` | 部署/升级/排错权威文档（排查「卡在 queued」等问题） |
+| `package.json` / `package-lock.json` | npm 脚本与锁定依赖 |
+| `.dev.vars.example` | 本地 secrets 模板（`OPENALEX_API_KEY` 等） |
+| `LICENSE` | MIT 许可证 |
+| `.gitignore` | Git 忽略规则 |
 
 ## 运行与构建
 
@@ -73,7 +85,7 @@ npm run deploy:demo              # 纯静态演示部署（wrangler.demo.jsonc�
 
 - 先决：`wrangler d1 create oncoreplay-db`（回填 `database_id`）、`wrangler queues create` ×2、`wrangler secret put OPENALEX_API_KEY`（必需，缺失时部署报错）、`wrangler d1 migrations apply --remote`，然后 `npm run deploy`
 - 部署后验证 `/api/health` 返回 `bindings: {d1:true, queue:true, ai:true, openAlex:true}`
-- 手动部署（不使用 GitHub Actions）；`wrangler.demo.jsonc` 提供无后端静态演示
+- 日常迭代推送 `main` 分支经 Cloudflare Git 集成自动构建部署；首次资源创建与排障用上文手动步骤；`wrangler.demo.jsonc` 提供无后端静态演示
 
 ## 安全与数据注意事项
 
@@ -90,7 +102,7 @@ npm run deploy:demo              # 纯静态演示部署（wrangler.demo.jsonc�
 
 ## 标志维护约定
 
-项目标志采用统一的深灰方章、米白线条与赤陶色识别点，页面标志与 favicon 共用同一 `project-mark.svg`。后续替换必须保持原标志容器宽高，不得借机改变页眉、网格或页面布局。
+项目标志采用统一的深灰方章、米白线条与赤陶色识别点，页面标志与 favicon 共用同一 `public/project-mark.svg`。后续替换必须保持原标志容器宽高，不得借机改变页眉、网格或页面布局。
 
 ---
 

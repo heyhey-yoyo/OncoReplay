@@ -126,7 +126,7 @@ function switchLocale() {
 
 function siteHeader() {
   return `<header class="site-header"><div class="container nav">
-    <a class="brand" href="/" data-nav><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>OncoReplay</span><span class="brand-tag">${L('肿瘤研究时光机','A research time machine')}</span></a>
+    <a class="brand" href="/" data-nav><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span class="brand-text"><strong>${L('肿瘤研究时光机','OncoReplay')}</strong><small>${L('OncoReplay','A research time machine')}</small></span></a>
     <nav class="nav-links" aria-label="${L('主导航','Primary navigation')}">
       <a class="nav-link" href="/explore" data-nav>${L('探索','Explore')}</a>
       <a class="nav-link" href="/methodology" data-nav>${L('方法','Methodology')}</a>

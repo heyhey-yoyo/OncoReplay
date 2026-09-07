@@ -24,6 +24,10 @@ OncoReplay 是一个面向科研探索与传播的双语互动网页。默认界
 
 界面采用 `ydchen-portfolio` 的暖米白、浅灰与赤陶色视觉系统，使用衬线标题和扁平化信息卡片；时间线可视化、双语文案和证据抽屉保持不变。
 
+## 数据与隐私
+
+回放默认非公开列出（unlisted），链接含随机标识，只有知道网址的人才能看到。无登录、无 Cookie。生成的回放与运行记录保存在 Cloudflare D1 数据库中：失败任务保留 7 天、成功回放保留 90 天后自动删除。请勿在主题中输入可识别患者身份的信息。
+
 ## 本地运行
 
 要求 Node.js 20 或更高版本。
@@ -40,6 +44,8 @@ Wrangler 会输出本地地址。使用完整 `npm run dev` 才能测试 API、D
 
 ## 部署
 
+项目已接入 Cloudflare Git 集成：推送 `main` 分支即自动构建部署。首次接入前需手动创建资源（完整部署、升级与排错步骤见 `SETUP_ZH.md`）：
+
 ```bash
 npm exec -- wrangler login
 npm exec -- wrangler d1 create oncoreplay-db
@@ -52,9 +58,7 @@ npm run deploy
 
 创建 D1 后，把命令返回的 `database_id` 写入 `wrangler.jsonc`。同时把 `CONTACT_EMAIL` 和 `CROSSREF_MAILTO` 改为你自己的联系邮箱。
 
-`package-lock.json` 固定稳定版 Wrangler 和已审计的间接依赖。安装或修复依赖时不要使用 `npm audit fix --force` 或预发布版本。
-
-部署后访问 `https://oncoreplay.<你的子域>.workers.dev/api/health`，预期四个 binding 均为 `true`（d1、queue、ai、openAlex）。
+部署后访问 `https://oncoreplay.<你的子域>.workers.dev/api/health`，预期四个 binding 均为 `true`。
 
 ## 责任边界
 
@@ -64,6 +68,10 @@ npm run deploy
 - 每个关键事件都应通过证据抽屉返回 DOI、PMID 或 OpenAlex 来源核查
 
 完整部署、升级与排错步骤见 `SETUP_ZH.md`。
+
+## License
+
+MIT
 
 ---
 
