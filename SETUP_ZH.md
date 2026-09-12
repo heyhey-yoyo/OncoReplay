@@ -1,6 +1,6 @@
 # OncoReplay 中文部署、升级与排错
 
-本指南适用于当前完整仓库，更新于 2026-09-13。日常维护采用 GitHub main → Cloudflare Git 集成自动部署；旧解压覆盖包步骤已废止。使用说明见 [README.md](./README.md)，模块与测试约定见 [AGENTS.md](./AGENTS.md)。
+日常维护采用 GitHub main → Cloudflare Git 集成自动部署。使用说明见 [README.md](./README.md)，模块与测试约定见 [AGENTS.md](./AGENTS.md)。
 
 ## 现有部署升级
 
@@ -391,4 +391,4 @@ npm run build
 
 `RATE_LIMIT_CREATE_PER_HOUR` 默认 5，`RATE_LIMIT_RETRY_PER_HOUR` 默认 10。超限返回 429 和 Retry-After。缺少 Cloudflare 客户端 IP 的本地请求共用 unknown 桶；D1 限流存储故障时告警并放行。配置值必须为正的安全整数，非法值使用默认值。
 
-2026-09-13 已对现有数据库完成备份与两项远程迁移，迁移后原有 9 个回放均保留。新环境仍需先完成迁移再部署代码。
+新环境先完成所需迁移，再部署依赖对应数据结构的代码。现有环境先查询迁移记录，只应用待执行项。
