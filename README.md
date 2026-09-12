@@ -103,6 +103,10 @@ npm run build
 
 `test:database` 需要 Node.js 22.13+ 的内置 SQLite，在内存库中运行，不读取线上数据库或调用真实生成队列。基础构建的 Node.js 要求保持原项目约定。
 
+## 页眉滚动行为更新
+
+品牌页眉位于文档顶部，随页面正常滚走，不使用 fixed/sticky 吸顶；字体、字号、标志尺寸和三类排布基准保持一致。 工作室/回放顶部工具栏同步随页面滚走，取消原页眉吸顶偏移。
+
 ## AI 维护提醒
 
 > **⚠️ 任何修改此项目的 AI 代理（Claude Code、Cursor、Copilot 等）都必须同步更新本文件与 [AGENTS.md](./AGENTS.md)。**
