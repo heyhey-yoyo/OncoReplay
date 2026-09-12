@@ -14,7 +14,8 @@
     "db:local": "wrangler d1 migrations apply oncoreplay-db --local",
     "db:remote": "wrangler d1 migrations apply oncoreplay-db --remote",
     "deploy:demo": "npm run build && wrangler deploy --config wrangler.demo.jsonc",
-    "dev:static": "node scripts/dev-server.mjs"
+    "dev:static": "node scripts/dev-server.mjs",
+    "test:database": "node scripts/check-database.mjs"
   },
   "devDependencies": {
     "wrangler": "4.115.0"
