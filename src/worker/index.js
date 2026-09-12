@@ -1,6 +1,7 @@
 import { expandCancerType } from './lib/cancer-types.js';
 import { searchOpenAlex } from './lib/clients.js';
 import { cleanupExpiredReplays, getReplayPayload, processPipelineMessage } from './lib/pipeline.js';
+import { checkRateLimit, clientIp, resolveRateLimit } from './lib/rate-limit.js';
 import { CURRENT_YEAR, nowIso, normalizeTopic, sha256, slugify, truncate } from './lib/utils.js';
 
 const JSON_HEADERS = {
@@ -15,8 +16,15 @@ function json(data, init = {}) {
   });
 }
 
-function error(code, message, status = 400, requestId = crypto.randomUUID(), details) {
-  return json({ error: { code, message, requestId, ...(details ? { details } : {}) } }, { status, headers: { 'x-request-id': requestId } });
+function error(code, message, status = 400, requestId = crypto.randomUUID(), details, extraHeaders) {
+  return json({ error: { code, message, requestId, ...(details ? { details } : {}) } }, { status, headers: { 'x-request-id': requestId, ...(extraHeaders || {}) } });
+}
+
+// 公开写接口限流：超限返回 429 + Retry-After；存储故障由 checkRateLimit fail-open 放行。
+async function enforceRateLimit(env, key, limitName, requestId) {
+  const result = await checkRateLimit(env, key, resolveRateLimit(env, limitName));
+  if (result.allowed) return null;
+  return error('RATE_LIMITED', '操作过于频繁，请稍后再试。', 429, requestId, undefined, { 'retry-after': String(result.retryAfterSeconds) });
 }
 
 function extractEntities(topic) {
@@ -107,14 +115,16 @@ async function readExample(env, request) {
 async function createReplay(env, request, requestId) {
   if (!env.DB || !env.REPLAY_QUEUE) return error('PIPELINE_NOT_CONFIGURED', '自定义生成需要同时绑定 D1 数据库和 Queue。请检查 wrangler.jsonc 后重新部署。', 503, requestId);
   if (!env.OPENALEX_API_KEY) return error('OPENALEX_NOT_CONFIGURED', '自定义生成需要 OPENALEX_API_KEY。请运行 npx wrangler secret put OPENALEX_API_KEY。', 503, requestId);
+  const limited = await enforceRateLimit(env, `replay-create:${clientIp(request)}`, 'RATE_LIMIT_CREATE_PER_HOUR', requestId);
+  if (limited) return limited;
   let body;
   try { body = await request.json(); } catch { return error('INVALID_JSON', '请求正文必须是有效 JSON。', 400, requestId); }
   const input = validateInput(body);
   if (!input.ok) return error('INVALID_INPUT', input.message, 422, requestId);
 
   const queryHash = await sha256({ topic: input.topic.toLowerCase(), startYear: input.startYear || null, endYear: input.endYear || null, maxWorks: input.maxWorks, angle: input.angle, cancerType: input.cancerType, exclude: input.exclude, locale: input.locale });
-  const cached = await env.DB.prepare(`SELECT r.slug,r.status FROM replay_queries q JOIN replays r ON r.id=q.replay_id WHERE q.query_hash=? AND r.status IN ('queued','processing','complete') ORDER BY r.updated_at DESC LIMIT 1`).bind(queryHash).first();
-  if (cached) return json({ slug: cached.slug, status: cached.status, reused: true, requestId }, { status: cached.status === 'complete' ? 200 : 202, headers: { 'x-request-id': requestId } });
+  const cached = await env.DB.prepare(`SELECT r.slug,r.status FROM replay_queries q JOIN replays r ON r.id=q.replay_id WHERE q.query_hash=? ORDER BY r.updated_at DESC LIMIT 1`).bind(queryHash).first();
+  if (cached) return json({ slug: cached.slug, status: cached.status, reused: true, requestId }, { status: ['queued','processing'].includes(cached.status) ? 202 : 200, headers: { 'x-request-id': requestId } });
 
   const id = crypto.randomUUID();
   const slug = `${slugify(input.topic) || 'replay'}-${id.slice(0, 7)}`;
@@ -123,13 +133,22 @@ async function createReplay(env, request, requestId) {
   const subtitle = input.locale === 'en'
     ? `A source-grounded reconstruction of how “${input.topic}” evolved.`
     : `基于开放学术元数据重建“${input.topic}”的研究演化轨迹。`;
-  await env.DB.batch([
-    env.DB.prepare(`INSERT INTO replays (id,slug,title,subtitle,original_query,normalized_query,status,visibility,start_year,end_year,work_count,event_count,version,locale,data_status,open_questions_json,created_at,updated_at)
-      VALUES (?,?,?,?,?,?,'queued','unlisted',?,?,0,0,2,?,'source-grounded','[]',?,?)`)
-      .bind(id, slug, title, subtitle, input.topic, input.topic, input.startYear || null, input.endYear || null, input.locale, now, now),
-    env.DB.prepare(`INSERT INTO replay_queries (id,replay_id,entities_json,synonyms_json,filters_json,openalex_query_json,query_hash,created_at) VALUES (?,?,?,?,?,?,?,?)`)
-      .bind(crypto.randomUUID(), id, JSON.stringify(extractEntities(input.topic)), JSON.stringify(suggestSynonyms(input.topic)), JSON.stringify({ maxWorks: input.maxWorks, angle: input.angle, cancerType: input.cancerType, exclude: input.exclude }), JSON.stringify({ search: input.topic, startYear: input.startYear, endYear: input.endYear }), queryHash, now),
-  ]);
+  try {
+    await env.DB.batch([
+      env.DB.prepare(`INSERT INTO replays (id,slug,title,subtitle,original_query,normalized_query,status,visibility,start_year,end_year,work_count,event_count,version,locale,data_status,open_questions_json,created_at,updated_at)
+        VALUES (?,?,?,?,?,?,'queued','unlisted',?,?,0,0,2,?,'source-grounded','[]',?,?)`)
+        .bind(id, slug, title, subtitle, input.topic, input.topic, input.startYear || null, input.endYear || null, input.locale, now, now),
+      env.DB.prepare(`INSERT INTO replay_queries (id,replay_id,entities_json,synonyms_json,filters_json,openalex_query_json,query_hash,created_at) VALUES (?,?,?,?,?,?,?,?)`)
+        .bind(crypto.randomUUID(), id, JSON.stringify(extractEntities(input.topic)), JSON.stringify(suggestSynonyms(input.topic)), JSON.stringify({ maxWorks: input.maxWorks, angle: input.angle, cancerType: input.cancerType, exclude: input.exclude }), JSON.stringify({ search: input.topic, startYear: input.startYear, endYear: input.endYear }), queryHash, now),
+    ]);
+  } catch (cause) {
+    // 唯一索引兜底 query_hash 竞态：并发提交相同查询时后者撞唯一约束，复用先到者的回放。
+    if (String(cause?.message || '').includes('UNIQUE constraint failed: replay_queries.query_hash')) {
+      const raced = await env.DB.prepare(`SELECT r.slug,r.status FROM replay_queries q JOIN replays r ON r.id=q.replay_id WHERE q.query_hash=? ORDER BY r.updated_at DESC LIMIT 1`).bind(queryHash).first();
+      if (raced) return json({ slug: raced.slug, status: raced.status, reused: true, requestId }, { status: ['queued','processing'].includes(raced.status) ? 202 : 200, headers: { 'x-request-id': requestId } });
+    }
+    throw cause;
+  }
   const jobId = crypto.randomUUID();
   await env.DB.prepare(`INSERT INTO jobs (id,replay_id,job_type,status,progress_current,progress_total,attempts,created_at,updated_at) VALUES (?,?,'FETCH_WORKS','queued',0,5,0,?,?)`)
     .bind(jobId, id, now, now).run();
@@ -175,14 +194,28 @@ async function readReplay(env, request, slug, requestId) {
   return json(payload, { headers: { 'cache-control': 'public, max-age=60, s-maxage=86400', 'x-request-id': requestId } });
 }
 
-async function retryReplay(env, slug, requestId) {
+async function retryReplay(env, request, slug, requestId) {
   if (!env.DB || !env.REPLAY_QUEUE) return error('PIPELINE_NOT_CONFIGURED', 'D1 或 Queue 未配置。', 503, requestId);
-  const row = await env.DB.prepare(`SELECT r.id,r.normalized_query,r.locale,j.id job_id FROM replays r LEFT JOIN jobs j ON j.replay_id=r.id WHERE r.slug=? ORDER BY j.updated_at DESC LIMIT 1`).bind(slug).first();
+  const limited = await enforceRateLimit(env, `replay-retry:${clientIp(request)}`, 'RATE_LIMIT_RETRY_PER_HOUR', requestId);
+  if (limited) return limited;
+  const row = await env.DB.prepare(`SELECT r.id,r.status,r.normalized_query,r.locale,j.id job_id FROM replays r LEFT JOIN jobs j ON j.replay_id=r.id WHERE r.slug=? ORDER BY j.updated_at DESC LIMIT 1`).bind(slug).first();
   if (!row) return error('REPLAY_NOT_FOUND', '未找到该回放。', 404, requestId);
+  // 仅终态（failed/complete）允许重试；中间态重试会产生并发管线，写入重复 events/branches。
+  if (row.status === 'queued' || row.status === 'processing') {
+    return error('REPLAY_IN_PROGRESS', '回放正在生成中，请等待当前任务结束后再重试。', 409, requestId);
+  }
   const jobId = row.job_id || crypto.randomUUID();
-  if (!row.job_id) await env.DB.prepare(`INSERT INTO jobs (id,replay_id,job_type,status,progress_current,progress_total,attempts,created_at,updated_at) VALUES (?,?,'FETCH_WORKS','queued',0,5,0,?,?)`).bind(jobId, row.id, nowIso(), nowIso()).run();
-  else await env.DB.prepare(`UPDATE jobs SET job_type='FETCH_WORKS',status='queued',progress_current=0,progress_total=5,error_code=NULL,error_message=NULL,updated_at=? WHERE id=?`).bind(nowIso(), jobId).run();
-  await env.DB.prepare(`UPDATE replays SET status='queued',updated_at=? WHERE id=?`).bind(nowIso(), row.id).run();
+  // 在同一事务内更新任务并领取回放；并发重试的失败方不能重置获胜方的任务。
+  const now = nowIso();
+  const terminal = "SELECT 1 FROM replays WHERE id=? AND status NOT IN ('queued','processing')";
+  const jobStatement = row.job_id
+    ? env.DB.prepare(`UPDATE jobs SET job_type='FETCH_WORKS',status='queued',progress_current=0,progress_total=5,error_code=NULL,error_message=NULL,updated_at=? WHERE id=? AND EXISTS (${terminal})`).bind(now, jobId, row.id)
+    : env.DB.prepare(`INSERT INTO jobs (id,replay_id,job_type,status,progress_current,progress_total,attempts,created_at,updated_at) SELECT ?,?,'FETCH_WORKS','queued',0,5,0,?,? WHERE EXISTS (${terminal})`).bind(jobId, row.id, now, now, row.id);
+  const [, reset] = await env.DB.batch([
+    jobStatement,
+    env.DB.prepare(`UPDATE replays SET status='queued',updated_at=? WHERE id=? AND status NOT IN ('queued','processing')`).bind(now, row.id),
+  ]);
+  if (!reset.meta?.changes) return error('REPLAY_IN_PROGRESS', '回放正在生成中，请等待当前任务结束后再重试。', 409, requestId);
   try {
     await env.REPLAY_QUEUE.send({ type: 'FETCH_WORKS', replayId: row.id, jobId, topic: row.normalized_query, locale: row.locale || 'zh' });
   } catch (cause) {
@@ -213,7 +246,7 @@ async function handleApi(request, env) {
   const statusMatch = url.pathname.match(/^\/api\/replays\/([a-z0-9-]+)\/status$/);
   if (statusMatch && request.method === 'GET') return replayStatus(env, statusMatch[1], requestId);
   const retryMatch = url.pathname.match(/^\/api\/replays\/([a-z0-9-]+)\/retry$/);
-  if (retryMatch && request.method === 'POST') return retryReplay(env, retryMatch[1], requestId);
+  if (retryMatch && request.method === 'POST') return retryReplay(env, request, retryMatch[1], requestId);
   const replayMatch = url.pathname.match(/^\/api\/replays\/([a-z0-9-]+)$/);
   if (replayMatch && request.method === 'GET') return readReplay(env, request, replayMatch[1], requestId);
   return error('NOT_FOUND', 'API 路由不存在。', 404, requestId);
@@ -221,8 +254,8 @@ async function handleApi(request, env) {
 
 export default {
   async fetch(request, env, ctx) {
-    // 免费版账户没有可用的 cron 配额,改用流量钩子触发清理:
-    // 每次新生成时必跑一次,普通访问按 0.5% 概率顺带清理(幂等、开销极小)。
+    // 过期回放清理:每日 cron（wrangler.jsonc triggers.crons）触发 scheduled() 兜底,
+    // 流量钩子作为补充:每次新生成时必跑一次,普通访问按 0.5% 概率顺带清理(幂等、开销极小)。
     const url = new URL(request.url);
     if ((url.pathname === '/api/replays' && request.method === 'POST') || Math.random() < 0.005) {
       ctx.waitUntil(cleanupExpiredReplays(env));

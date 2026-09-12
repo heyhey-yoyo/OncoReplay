@@ -801,3 +801,11 @@ npm run build
 ```
 
 本仓库不把 AI 成功作为回放完成的必要条件：结构化检索、评分、聚类和规则事件是核心，AI 仅增强命名与短叙事。
+
+## 查询去重与写入限流
+
+现有部署升级时需应用 `0003_query_hash_unique.sql` 和 `0004_rate_limits.sql`。先备份数据库并核对重复查询：第三个迁移会删除重复回放及关联记录，优先保留 complete，其次 processing、queued，最后其他终态，同级保留最早记录；第四个迁移创建限流表。
+
+`RATE_LIMIT_CREATE_PER_HOUR` 默认 5，`RATE_LIMIT_RETRY_PER_HOUR` 默认 10。超限返回 429 和 Retry-After。缺少 Cloudflare 客户端 IP 的本地请求共用 unknown 桶；D1 限流存储故障时告警并放行。配置值必须为正整数，非法值使用默认值。
+
+2026-09-13 已对现有数据库完成备份与两项远程迁移，迁移后原有 9 个回放均保留。新环境仍需先完成迁移再部署代码。

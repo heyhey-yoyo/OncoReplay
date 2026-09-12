@@ -148,15 +148,18 @@ export async function fetchJson(url, options = {}) {
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const response = await fetch(url, { ...fetchOptions, headers, signal: controller.signal });
-      clearTimeout(timeout);
       if (!response.ok) {
+        // 响应体读完才能解除超时，慢速响应体同样受 timeoutMs 约束。
         const body = await response.text().catch(() => '');
+        clearTimeout(timeout);
         const error = new Error(`HTTP ${response.status}${body ? `: ${body.slice(0, 160)}` : ''}`);
         error.status = response.status;
         if (![408, 425, 429, 500, 502, 503, 504].includes(response.status) || attempt === retries) throw error;
         lastError = error;
       } else {
-        return await response.json();
+        const data = await response.json();
+        clearTimeout(timeout);
+        return data;
       }
     } catch (error) {
       clearTimeout(timeout);

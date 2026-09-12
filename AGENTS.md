@@ -15,11 +15,11 @@
 - 前端：原生 JS SPA（无框架、无构建器），`public/app.js` + `public/core.mjs`；双语（默认简体中文，可切英文）
 - 后端：Cloudflare Worker（Node 风格 ESM，无 TypeScript、无第三方运行时依赖），wrangler v4
 - 数据源：OpenAlex（需 `OPENALEX_API_KEY`）、Europe PMC、Crossref
-- 数据库：D1（SQLite，binding `DB`，10 张表，`migrations/` 管理）
+- 数据库：D1（SQLite，binding `DB`，11 张表，`migrations/` 管理）
 - 队列：`oncoreplay-replay-jobs`（consumer `max_batch_size: 5`、`max_retries: 3`，DLQ `-dlq`）
 - AI：Workers AI，默认 `@cf/meta/llama-3.3-70b-instruct-fp8-fast`（可用 env `AI_MODEL` 覆盖），`response_format: json_schema`
 - 静态资源：Cloudflare Assets（`assets.directory: "./dist"`，`run_worker_first: ["/api/*"]`）；构建 = 复制 `public/` → `dist/`
-- 无 Cron（免费版配额耗尽）：清理靠「每次新生成必触发 + 普通请求 0.5% 概率」的流量钩子 + `scheduled()` 兜底
+- Cron：`wrangler.jsonc` 配置每日一次 trigger（`triggers.crons`）触发 `scheduled()` 清理过期回放；另有「每次新生成必触发 + 普通请求 0.5% 概率」的流量钩子作为补充
 
 ## 项目结构
 
@@ -32,16 +32,17 @@
 | `public/data/kras-g12d.json` | 内置 KRAS G12D 交互演示数据 |
 | `public/project-mark.svg` | 页面标志与 favicon 共用图形 |
 | `public/favicon.svg` / `public/robots.txt` | favicon 图标与抓取规则 |
-| `src/worker/index.js` | Worker 入口：路由（/api/health、/api/query/preview、/api/replays）、queue()、scheduled()、输入校验、query_hash 去重 |
+| `src/worker/index.js` | Worker 入口：路由（/api/health、/api/query/preview、/api/replays）、queue()、scheduled()、输入校验、query_hash 去重、公开写接口限流 |
 | `src/worker/lib/pipeline.js` | 五阶段状态机、候选扩展、D1 批量写入、AI Schema 校验、清理策略、回放组装 |
 | `src/worker/lib/analysis.js` | 加权图、Louvain、relevance/turning-point 评分、7 类规则事件、中英规则文案 |
 | `src/worker/lib/clients.js` | OpenAlex / Europe PMC / Crossref 客户端 |
 | `src/worker/lib/utils.js` | tokenize、余弦/Jaccard、fetchJson 重试退避、mapWithConcurrency |
+| `src/worker/lib/rate-limit.js` | 公开写接口固定窗口限流（D1 `rate_limits` 计数、fail-open、env 阈值可覆盖） |
 | `src/worker/lib/cancer-types.js` | 34 个 TCGA 癌种 → OpenAlex 同义词组 |
-| `migrations/` | 0001_init.sql（10 表 + 9 索引）、0002_full_pipeline.sql |
+| `migrations/` | 0001_init.sql（10 表 + 9 索引）、0002_full_pipeline.sql、0003_query_hash_unique.sql、0004_rate_limits.sql |
 | `scripts/build.mjs` | 构建：`public/` → `dist/` |
 | `scripts/dev-server.mjs` | 纯静态预览服务器（`dev:static` / `preview`） |
-| `tests/` | core / analysis / pipeline 三个测试文件 |
+| `tests/` | core / analysis / pipeline / rate-limit 四个测试文件 |
 | `wrangler.jsonc` | 主 Worker 配置（D1 / Queue / AI / Assets 绑定） |
 | `wrangler.demo.jsonc` | 无后端静态演示配置（`deploy:demo`） |
 | `SETUP_ZH.md` | 部署/升级/排错权威文档（排查「卡在 queued」等问题） |
@@ -69,7 +70,7 @@ npm run deploy:demo              # 纯静态演示部署（wrangler.demo.jsonc�
 
 ## 测试
 
-- Node 内置 `node:test`：core（回放数学）、analysis（图/Louvain/评分端到端 3–6 分支、事件必有来源论文）、pipeline（命名空间隔离、AI 输出严格校验、topicAffinity、癌种同义词全覆盖）
+- Node 内置 `node:test`：core（回放数学）、analysis（图/Louvain/评分端到端 3–6 分支、事件必有来源论文）、pipeline（命名空间隔离、AI 输出严格校验、topicAffinity、癌种同义词全覆盖）、rate-limit（固定窗口计数、超限判定、fail-open、配置回退）
 - 纯函数级测试，不测 HTTP/真实 API；不依赖环境变量
 
 ## 代码组织与风格约定
@@ -92,6 +93,7 @@ npm run deploy:demo              # 纯静态演示部署（wrangler.demo.jsonc�
 - 外部 API 有界：OpenAlex 超时 14s/重试 2 次、并发上限 3；富化只补前 35 篇缺摘要、前 30 篇有 DOI 的
 - 输入校验：主题 3–240 字符、年份 1900–当前、maxWorks 40–500、angle/locale 白名单
 - 回放默认 `unlisted`，slug 含 7 位随机 UUID；前端提示勿输入可识别患者身份的信息；无登录、无 Cookie
+- 公开写接口限流：创建 5 次/小时、重试 10 次/小时（按 CF-Connecting-IP 的固定窗口，D1 `rate_limits` 表计数；env `RATE_LIMIT_CREATE_PER_HOUR` / `RATE_LIMIT_RETRY_PER_HOUR` 可覆盖；限流存储故障 fail-open 放行并记日志）
 - 数据保留：失败 7 天 / 成功 90 天 / 孤立论文 7 天 / 失效反馈 90 天，子表级联删除
 - AI 安全：AI 只能用输入中的 work ID，禁止发明事实；每次调用落 `ai_runs` 审计；校验失败重试 1 次后回退规则文案（`ai_generated=0`）
 - 所有用户/AI 文本经 `escapeHtml` 渲染；外链 `rel="noreferrer"`
@@ -105,6 +107,10 @@ npm run deploy:demo              # 纯静态演示部署（wrangler.demo.jsonc�
 项目标志采用统一的深灰方章、米白线条与赤陶色识别点，页面标志与 favicon 共用同一 `public/project-mark.svg`。后续替换必须保持原标志容器宽高，不得借机改变页眉、网格或页面布局。
 
 ---
+
+## 2026-09-13 维护补充
+
+query_hash 唯一索引负责并发去重；失败回放也复用原记录，由显式重试接口重新排队。重试的任务更新与回放领取在同一 D1 batch 事务内完成，失败方不得改写任务。限流配置必须为正的安全整数，默认创建 5 次/小时、重试 10 次/小时，429 返回 Retry-After。
 
 ## AI 维护提醒
 
