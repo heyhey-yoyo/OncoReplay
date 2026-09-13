@@ -24,15 +24,15 @@ const state = {
   lastFrame: 0,
   resizeTimer: null,
   statusTimer: null,
-  locale: (() => { try { return localStorage.getItem('oncoreplay-locale') === 'en' ? 'en' : 'zh'; } catch { return 'zh'; } })(),
+  locale: 'zh',
   pendingCreateData: null,
   pollAttempts: 0,
   builtinRaw: null,
 };
 
-document.documentElement.lang = state.locale === 'zh' ? 'zh-CN' : 'en';
+document.documentElement.lang = 'zh-CN';
 
-const L = (zh, en) => state.locale === 'zh' ? zh : en;
+const L = (zh) => zh;
 const icons = {
   arrow: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   play: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18"><path d="M5.7 3.7v10.6L14 9 5.7 3.7Z" fill="currentColor"/></svg>',
@@ -117,13 +117,6 @@ function navigate(path) {
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
-function switchLocale() {
-  state.locale = state.locale === 'zh' ? 'en' : 'zh';
-  try { localStorage.setItem('oncoreplay-locale', state.locale); } catch { /* 存储不可用时仍允许在当前页面切换语言。 */ }
-  document.documentElement.lang = state.locale === 'zh' ? 'zh-CN' : 'en';
-  renderRoute();
-}
-
 function siteHeader() {
   return `<header class="site-header"><div class="container nav">
     <a class="brand" href="/" data-nav><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span class="brand-text"><strong>${L('肿瘤研究时光机','OncoReplay')}</strong><small>${L('OncoReplay','A research time machine')}</small></span></a>
@@ -131,7 +124,6 @@ function siteHeader() {
       <a class="nav-link" href="/explore" data-nav>${L('探索','Explore')}</a>
       <a class="nav-link" href="/methodology" data-nav>${L('方法','Methodology')}</a>
       <a class="nav-link" href="/about" data-nav>${L('关于','About')}</a>
-      <button class="button small ghost" type="button" data-locale>${state.locale === 'zh' ? 'EN' : '中文'}</button>
     </nav>
   </div></header>`;
 }
@@ -323,7 +315,7 @@ async function fetchStatus(slug) {
 
 async function loadReplay(slug) {
   if(state.replay && state.replaySlug===slug) {
-    // 缓存命中:内置示例按当前语言重新本地化(locale 切换时生效),保留播放位置
+    // 缓存命中时复用中文内置示例，保留播放位置
     if(slug==='kras-g12d' && state.builtinRaw) {
       const year=state.currentYear;
       const selected=state.selectedEventId;
@@ -528,7 +520,7 @@ function renderMethodology(){document.title=L('方法 — OncoReplay','Methodolo
 
 function renderAbout(){document.title=L('关于 — OncoReplay','About — OncoReplay');app.innerHTML=`<div class="shell">${siteHeader()}<main id="main"><section class="page-hero"><div class="container"><span class="eyebrow">${L('关于项目','About the project')}</span><h1>${L('研究演化的可视化叙事界面。','A visual narrative interface for research evolution.')}</h1><p>${L('面向研究者、期刊读书会、教师和科研传播者，快速看懂一个主题如何出现、扩散、分岔、遭遇挑战，并最终走向临床转化。','Designed for researchers, journal clubs, educators, and scientific communicators who need an inspectable view of how a topic emerges, expands, divides, is challenged, and approaches translation.')}</p></div></section><section class="section" style="padding-top:20px"><div class="container"><div class="steps"><article class="step"><span class="step-index">${L('产品边界','Product boundary')}</span><h3>${L('不是完整综述。','Not a complete review.')}</h3><p>${L('用于建立方向感和暴露来源路径，不承诺穷尽性检索。','It helps orientation and exposes source paths; it does not promise exhaustive retrieval.')}</p></article><article class="step"><span class="step-index">${L('科学边界','Scientific boundary')}</span><h3>${L('不是“真相机器”。','Not a truth machine.')}</h3><p>${L('展示检索数据中的模式并标记待核查候选，不宣称共识或因果。','It visualizes patterns and flags candidates for inspection without claiming consensus or causality.')}</p></article><article class="step"><span class="step-index">${L('临床边界','Clinical boundary')}</span><h3>${L('不是医疗建议。','Not medical advice.')}</h3><p>${L('不提供患者级治疗选择或临床决策支持。','It does not provide patient-level treatment selection or clinical decision support.')}</p></article></div></div></section></main>${footer()}</div>`;bindCommonNavigation();}
 
-function bindCommonNavigation(){document.querySelectorAll('[data-nav]').forEach(link=>link.addEventListener('click',event=>{if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;event.preventDefault();navigate(link.getAttribute('href'));}));document.querySelectorAll('[data-locale]').forEach(button=>button.addEventListener('click',switchLocale));}
+function bindCommonNavigation(){document.querySelectorAll('[data-nav]').forEach(link=>link.addEventListener('click',event=>{if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;event.preventDefault();navigate(link.getAttribute('href'));}));}
 function showToast(message){const root=document.querySelector('#toast-root');if(!root)return;root.innerHTML=`<div class="toast">${escapeHtml(message)}</div>`;requestAnimationFrame(()=>root.firstElementChild?.classList.add('show'));setTimeout(()=>root.firstElementChild?.classList.remove('show'),2600);}
 function renderNotFound(){document.title=L('页面不存在 — OncoReplay','Page not found — OncoReplay');app.innerHTML=`<div class="shell">${siteHeader()}<main id="main"><div class="empty-state"><span class="eyebrow">404</span><h1>${L('这段时间线不存在。','That part of the timeline is missing.')}</h1><p>${L('请求的页面不可用。','The requested page is unavailable.')}</p><a class="button primary" href="/" data-nav>${L('返回首页','Return home')}</a></div></main>${footer()}</div>`;bindCommonNavigation();}
 

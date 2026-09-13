@@ -12,7 +12,7 @@
 
 ## 技术栈与运行架构
 
-- 前端：原生 JS SPA（无框架、无构建器），`public/app.js` + `public/core.mjs`；双语（默认简体中文，可切英文）
+- 前端：原生 JS SPA（无框架、无构建器），`public/app.js` + `public/core.mjs`；固定简体中文界面
 - 后端：Cloudflare Worker（Node 风格 ESM，无 TypeScript、无第三方运行时依赖），wrangler v4
 - 数据源：OpenAlex（需 `OPENALEX_API_KEY`）、Europe PMC、Crossref
 - 数据库：D1（SQLite，binding `DB`，11 张表，`migrations/` 管理）
@@ -27,7 +27,7 @@
 | --- | --- |
 | `public/index.html` | SPA 页面结构 |
 | `public/styles.css` | 全部样式 |
-| `public/app.js` | SPA 主文件：路由、表单、轮询、回放渲染、SVG 时间线、中英切换 |
+| `public/app.js` | SPA 主文件：路由、表单、轮询、回放渲染、SVG 时间线、中文界面 |
 | `public/core.mjs` | 前端纯函数：clamp/yearProgress/playbackStep/escapeHtml 等 |
 | `public/data/kras-g12d.json` | 内置 KRAS G12D 交互演示数据 |
 | `public/project-mark.svg` | 页面标志与 favicon 共用图形 |
@@ -85,7 +85,7 @@ npm run build
 ## 代码组织与风格约定
 
 - 依赖方向清晰无循环：utils → clients/analysis/cancer-types → pipeline → index（只做路由与校验）
-- 双语：前端 `L(zh, en)` 宏；后端规则文案维护 zh/en 两套字面量；AI prompt 带 `language` 字段与字符数约束
+- 前端 locale 固定为 zh，L 只返回中文，不读取旧 oncoreplay-locale 偏好，也不展示语言切换。新建请求提交 zh；后端仍兼容既有 zh/en 数据与 API 字段，保留论文原文，避免破坏历史回放和来源内容。
 - 评分公式在 `analysis.js` 的 `scoreWorks()`（relevance）与 turning-point 评分；候选排序在 `pipeline.js` 的 `candidatePriority`
 - SQL 全部手写参数绑定（`.bind()`），批量写用 `env.DB.batch`（75 条/批）
 - Worker 错误统一 `{error: {code, message, requestId}}`，响应头带 `x-request-id`；fatal 错误不重试，其余指数退避
@@ -107,7 +107,7 @@ query_hash 唯一索引控制并发去重；失败回放复用记录，由显式
 
 ### 界面维护约定
 
-前端使用 `ydchen-portfolio` 的米白 / 赤陶色视觉系统；视觉调整不得改变时间线可视化、双语文案、证据边界、Worker 路由或 D1 schema。
+前端使用 `ydchen-portfolio` 的米白 / 赤陶色视觉系统；视觉调整不得改变时间线可视化、中文文案、证据边界、Worker 路由或 D1 schema。
 
 ## 部署
 
@@ -128,6 +128,8 @@ query_hash 唯一索引控制并发去重；失败回放复用记录，由显式
 ## 标志维护约定
 
 项目标志采用统一的深灰方章、米白线条与赤陶色识别点，页面标志与 favicon 共用同一 `public/project-mark.svg`。后续替换必须保持原标志容器宽高，不得借机改变页眉、网格或页面布局。
+
+---
 
 ## AI 维护提醒
 
