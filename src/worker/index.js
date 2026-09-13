@@ -122,12 +122,15 @@ async function createReplay(env, request, requestId) {
   const input = validateInput(body);
   if (!input.ok) return error('INVALID_INPUT', input.message, 422, requestId);
 
-  const queryHash = await sha256({ topic: input.topic.toLowerCase(), startYear: input.startYear || null, endYear: input.endYear || null, maxWorks: input.maxWorks, angle: input.angle, cancerType: input.cancerType, exclude: input.exclude, locale: input.locale });
+  // 复用凭据仅由原浏览器持有，不能凭公开主题定位别人的 unlisted 回放。
+  if (body.reuseKey !== undefined && !/^[a-f0-9]{32,64}$/.test(body.reuseKey)) return error('INVALID_INPUT', '回放复用凭据无效。', 422, requestId);
+  const reuseScope = body.reuseKey || crypto.randomUUID();
+  const queryHash = await sha256({ reuseScope, topic: input.topic.toLowerCase(), startYear: input.startYear || null, endYear: input.endYear || null, maxWorks: input.maxWorks, angle: input.angle, cancerType: input.cancerType, exclude: input.exclude, locale: input.locale });
   const cached = await env.DB.prepare(`SELECT r.slug,r.status FROM replay_queries q JOIN replays r ON r.id=q.replay_id WHERE q.query_hash=? ORDER BY r.updated_at DESC LIMIT 1`).bind(queryHash).first();
   if (cached) return json({ slug: cached.slug, status: cached.status, reused: true, requestId }, { status: ['queued','processing'].includes(cached.status) ? 202 : 200, headers: { 'x-request-id': requestId } });
 
   const id = crypto.randomUUID();
-  const slug = `${slugify(input.topic) || 'replay'}-${id.slice(0, 7)}`;
+  const slug = `${slugify(input.topic) || 'replay'}-${id.replaceAll('-', '')}`;
   const now = nowIso();
   const title = input.topic;
   const subtitle = input.locale === 'en'

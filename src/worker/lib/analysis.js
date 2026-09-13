@@ -3,6 +3,7 @@ import {
   cosineFromCounts,
   dateToYear,
   jaccard,
+  normalizeCompleteDate,
   percentileRank,
   tokenCounts,
   tokenize,
@@ -308,7 +309,7 @@ function eventText(locale, type, work, branchLabel) {
     revival: [`早期论文重新获得关注`, `一篇较早发表的论文在多年后出现新的引用增长，提示旧线索可能被新的技术或研究问题重新激活。`, '该论文发表时间较早，但近期引用增速高于其之前阶段。'],
     translation: [`临床转化活动增加`, `当前检索结果中开始出现更多患者、试验、剂量或疗效相关研究，研究轨迹从机制与药物开发进一步延伸到临床。`, '该节点包含结构化或文本可识别的临床转化信号。'],
     challenge: [`出现限制性或相反方向的证据`, `研究中出现耐药、异质性、毒性或结果不一致等信号。该事件仅是机器检测候选，需要研究者核查原文。`, '标题或摘要中出现挑战性语义，并伴随较高的争议或跨分支信号。'],
-    correction: [`论文更新状态需要核查`, `结构化来源记录了更正、撤稿或关注表达等更新关系。界面只展示来源状态，不推断学术不端。`, 'Crossref 或 OpenAlex 返回了结构化更新或撤稿状态。'],
+    correction: [`论文更新状态需要核查`, `结构化来源记录了更正、撤稿、关注表达或恢复等更新关系。界面只展示来源状态，不推断学术不端。`, '来源返回了针对该论文、具有明确日期的结构化更新状态。'],
   };
   const en = {
     birth: [`A recognizable ${branchLabel} cluster emerges`, `Around ${year}, a recurring cluster of related papers becomes visible in the retrieved dataset.`, 'This is among the earliest relevant works in its branch.'],
@@ -317,7 +318,7 @@ function eventText(locale, type, work, branchLabel) {
     revival: ['An earlier paper returns to attention', 'An older work shows renewed citation growth years after publication.', 'Recent citation growth is unusually strong relative to its earlier period.'],
     translation: ['Clinical translation activity increases', 'Patient, trial, dose, or efficacy-related studies become more visible in the retrieved set.', 'The work contains structured or textual translation signals.'],
     challenge: ['A limiting or conflicting signal appears', 'Resistance, heterogeneity, toxicity, or discordant results appear. This is a machine-detected candidate requiring review.', 'Challenge language and debate-related graph signals are present.'],
-    correction: ['A publication update requires inspection', 'Structured sources record a correction, retraction, or expression of concern. No misconduct inference is made.', 'Crossref or OpenAlex reports a structured update status.'],
+    correction: ['A publication update requires inspection', 'Structured sources record a correction, retraction, expression of concern, or reinstatement. No misconduct inference is made.', 'A source reports a dated structured update targeting this work.'],
   };
   const values = locale === 'en' ? en[type] : zh[type];
   return { title: values[0], summary: values[1], selectionReason: values[2] };
@@ -338,8 +339,8 @@ export function buildRuleEvents(scoredWorks, branches, locale = 'zh', minEvents 
     candidates.push({
       id: `event-${crypto.randomUUID().slice(0, 10)}`,
       eventType: type,
-      eventDate: work.publicationDate || `${work.publicationYear}-01-01`,
-      year: work.publicationYear,
+      eventDate: extra.eventDate || work.publicationDate || `${work.publicationYear}-01-01`,
+      year: extra.eventDate ? Number(extra.eventDate.slice(0, 4)) : work.publicationYear,
       title: text.title,
       summary: text.summary,
       selectionReason: text.selectionReason,
@@ -384,9 +385,15 @@ export function buildRuleEvents(scoredWorks, branches, locale = 'zh', minEvents 
   add('translation', scoredWorks.filter((work) => work.clinicalSignal).sort((a, b) => (a.publicationYear || 9999) - (b.publicationYear || 9999))[0], { confidence: 0.7 });
   add('challenge', scoredWorks.filter((work) => work.challengeSignal || work.debateSignal > 0.55).sort((a, b) => b.debateSignal - a.debateSignal)[0], { confidence: 0.58, requiresReview: true });
   add('revival', scoredWorks.filter((work) => work.revivalSignal > 0.2).sort((a, b) => b.revivalSignal - a.revivalSignal)[0], { confidence: 0.61 });
-  for (const work of scoredWorks.filter((item) => item.isRetracted || (item.updateStatus || []).length).sort((a, b) => (a.publicationYear || 0) - (b.publicationYear || 0)).slice(0, 2)) {
-    add('correction', work, { confidence: 0.92, requiresReview: true });
-  }
+  // 未知更新日期仅在论文状态中展示，不能借用原始发表日制造时间线事件。
+  const corrections = scoredWorks.flatMap((work) => {
+    const dated = (work.updateStatus || []).filter(isTargetedCorrection)
+      .map((item) => ({ ...item, date: normalizeCompleteDate(item.date) }))
+      .filter((item) => item.date)
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    return dated.length ? [{ work, date: dated[0].date.slice(0, 10) }] : [];
+  }).sort((a, b) => a.date.localeCompare(b.date));
+  for (const { work, date } of corrections.slice(0, 2)) add('correction', work, { eventDate: date, confidence: 0.92, requiresReview: true });
 
   if (candidates.length < minEvents) {
     for (const work of breakthroughs) {
@@ -443,4 +450,9 @@ export function publicWorkType(work) {
 
 export function eventYear(event) {
   return event.year || dateToYear(event.eventDate, null);
+}
+
+export function isTargetedCorrection(item) {
+  return ['correction', 'retraction', 'expression-of-concern', 'reinstatement'].includes(item?.type)
+    && ['updated-by', 'notice'].includes(item.direction);
 }

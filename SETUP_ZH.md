@@ -14,7 +14,7 @@ npm run test:database
 npm run build
 ```
 
-完整验证推荐 Node.js 22.13+（test:database 使用内置 SQLite）；基础构建最低要求见 package.json。数据库测试使用内存库和替代队列，不读取生产数据。
+开发、部署与完整验证要求 Node.js 22.13+，与 package.json 一致；test:database 使用内置 SQLite。数据库测试使用内存库和替代队列，不读取生产数据。
 
 如果 migrations 有新增，先备份并查看待执行迁移，再应用。0003_query_hash_unique.sql 会清理重复查询及关联记录，0004_rate_limits.sql 创建限流表；不能将去重迁移当作无数据影响的普通建表。具体保留顺序见本文件“查询去重与写入限流”。纯文档修改不需再次迁移。
 
@@ -72,7 +72,7 @@ npx wrangler secret put OPENALEX_API_KEY
 - PMID；
 - PMCID；
 - DOI；
-- 首次发表日期线索。
+- 日期仍采用 OpenAlex；Europe PMC 的首次发表日期字段不参与当前时间线。
 
 Europe PMC 失败不会让整条回放失败；系统继续使用 OpenAlex 数据。
 
@@ -84,7 +84,7 @@ Europe PMC 失败不会让整条回放失败；系统继续使用 OpenAlex 数�
 - 读取 `update-to`、`updated-by` 和 relation；
 - 使用 `updates:<doi>` 查询更新该 DOI 的更正/撤稿记录；
 - 规范化为 correction、retraction、expression-of-concern、reinstatement 等状态；
-- 只展示结构化状态，不从标题推断学术不端。
+- 只将明确针对当前论文的 correction、retraction、expression-of-concern、reinstatement 作为更正状态；普通版本关系和更正通知自身不当作被更正论文。只有真实更新日期才能进入时间线；Crossref 完整年月日、时间戳与日期时间统一为通过日历校验的日期，只有年或年月时不补造日期。未知日期的状态仍留在证据抽屉，不从标题推断学术不端。
 
 ### turning-point 评分
 
@@ -114,16 +114,18 @@ Europe PMC 失败不会让整条回放失败；系统继续使用 OpenAlex 数�
 - 标题与摘要 token cosine；
 - bibliographic coupling。
 
-随后执行确定性的 Louvain 局部模块度优化，并通过合并或拆分把社区数量约束到 3–6 条，以保证可视化可读性。AI 只负责给已有社区命名，不负责改变论文归属。
+随后执行确定性的 Louvain 局部模块度优化，并通过合并或拆分以 3–6 条社区为目标（论文稀疏时可少于 3 条），以保证可视化可读性。AI 只负责给已有社区命名，不负责改变论文归属。
 
 ### Workers AI 严格 Schema
 
-AI 输入只包含：
+AI 按任务接收有界来源内容：分支命名接收该分支论文；事件文案接收该事件论文；开放问题接收已选时间线和对应论文。内容包括：
 
 - 已生成的分支；
 - 已生成的规则事件；
 - 与事件绑定的论文 ID、标题、年份和截断摘要；
 - 结构化更新状态。
+
+分支与开放问题均不是仅凭主题生成；文案仍须人工核验，结构化校验不能证明自然语言结论真实。
 
 AI 无权生成新 work ID、DOI、PMID、日期、引用关系或撤稿状态。
 
@@ -134,7 +136,7 @@ AI 无权生成新 work ID、DOI、PMID、日期、引用关系或撤稿状态�
 - 分支；
 - 关键论文；
 - 可视化边；
-- 8–15 个事件；
+- 目标 8–15 个事件，证据稀疏时可能更少，不为凑数添加无依据事件；
 - 来源 work IDs；
 - 置信度与人工核查标记；
 - 当前开放问题；
@@ -239,6 +241,8 @@ npx wrangler d1 execute oncoreplay-db --remote --command="SELECT slug,status,wor
 
 ### 查看 AI 回退情况
 
+`ai_runs` 每条记录概括一次完整叙事阶段，输入哈希覆盖来源上下文、模型和内部提示版本，不代表每次绑定调用的完整日志。`complete` 表示各部分校验成功，`partial` 表示事件批次或开放问题存在失败而已通过的文案保留，`fallback` 表示分支命名失败、保留全套规则文案。
+
 ```bash
 npx wrangler d1 execute oncoreplay-db --remote --command="SELECT task_type,model,status,validation_errors_json,created_at FROM ai_runs ORDER BY created_at DESC LIMIT 10"
 ```
@@ -324,7 +328,8 @@ npm run deploy
 这是预期降级行为。查看 `ai_runs`：
 
 - `complete`：Schema 叙事成功；
-- `fallback`：模型调用或验证失败，使用规则标题和摘要。
+- `partial`：部分事件批次或开放问题失败，保留已通过校验的文案；
+- `fallback`：分支命名失败，保持规则标题和摘要。
 
 ### Queue 进入 DLQ
 
@@ -336,7 +341,7 @@ curl -X POST https://你的域名/api/replays/slug/retry
 
 ### 第二个自定义回放出现 branch 主键冲突
 
-本版本已给每个 replay 的 Louvain community ID 增加 replay 前缀，避免多个回放在同一 D1 中共享 `c0/c1` 造成冲突。请确认部署的是 0.3.0 新版，而不是中间构建。
+本版本已给每个 replay 的 Louvain community ID 增加 replay 前缀，避免多个回放在同一 D1 中共享 `c0/c1` 造成冲突。请核对 Cloudflare 实际部署的提交与待发布提交一致，并确认管线包含该命名空间处理。
 
 ---
 
@@ -368,7 +373,7 @@ Workers & Pages
 [ ] 100 篇小任务能完成五阶段生成
 [ ] 证据抽屉能打开 DOI/OpenAlex 来源
 [ ] 手机端可拖动年份和打开证据
-[ ] 页面默认中文，EN 切换正常
+[ ] 界面和新建回放叙事为简体中文，论文标题等来源内容保留原文；页面不提供语言切换
 [ ] 页面固定显示研究工具和非医疗建议声明
 ```
 
@@ -386,6 +391,8 @@ npm run build
 本仓库不把 AI 成功作为回放完成的必要条件：结构化检索、评分、聚类和规则事件是核心，AI 仅增强命名与短叙事。
 
 ## 查询去重与写入限流
+
+客户端可提交32–64位十六进制随机 `reuseKey`；前端会生成并存于 `sessionStorage`。相同主题仅在相同凭据范围复用，不能查出其他浏览器的回放。凭据缺失时创建新回放；链接是访问能力，请勿公开私密链接。限流原始IP记录超过24小时后由下一次定时/流量清理删除，错误日志不记录IP。
 
 现有部署升级时需应用 `0003_query_hash_unique.sql` 和 `0004_rate_limits.sql`。先备份数据库并核对重复查询：第三个迁移会删除重复回放及关联记录，优先保留 complete，其次 processing、queued，最后其他终态，同级保留最早记录；第四个迁移创建限流表。
 

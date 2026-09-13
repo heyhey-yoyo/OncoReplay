@@ -32,7 +32,7 @@
 | `public/data/kras-g12d.json` | 内置 KRAS G12D 交互演示数据 |
 | `public/project-mark.svg` | 页面标志与 favicon 共用图形 |
 | `public/favicon.svg` / `public/robots.txt` | favicon 图标与抓取规则 |
-| `src/worker/index.js` | Worker 入口：路由（/api/health、/api/query/preview、/api/replays）、queue()、scheduled()、输入校验、query_hash 去重、公开写接口限流 |
+| `src/worker/index.js` | Worker 入口：路由（/api/health、/api/query/preview、/api/replays）、queue()、scheduled()、输入校验、按浏览器复用凭据隔离的 query_hash 去重、公开写接口限流 |
 | `src/worker/lib/pipeline.js` | 五阶段状态机、候选扩展、D1 批量写入、AI Schema 校验、清理策略、回放组装 |
 | `src/worker/lib/analysis.js` | 加权图、Louvain、relevance/turning-point 评分、7 类规则事件、中英规则文案 |
 | `src/worker/lib/clients.js` | OpenAlex / Europe PMC / Crossref 客户端 |
@@ -41,6 +41,7 @@
 | `src/worker/lib/cancer-types.js` | 34 个 TCGA 癌种 → OpenAlex 同义词组 |
 | `migrations/` | 0001_init.sql（10 表 + 9 索引）、0002_full_pipeline.sql、0003_query_hash_unique.sql、0004_rate_limits.sql |
 | `scripts/build.mjs` | 构建：`public/` → `dist/` |
+| `scripts/check-database.mjs` | 内存 SQLite：真实路由、并发、隐私隔离及限流清理验证 |
 | `scripts/dev-server.mjs` | 纯静态预览服务器（`dev:static` / `preview`） |
 | `tests/` | core / analysis / pipeline / rate-limit 四个测试文件 |
 | `wrangler.jsonc` | 主 Worker 配置（D1 / Queue / AI / Assets 绑定） |
@@ -52,6 +53,8 @@
 | `.gitignore` | Git 忽略规则 |
 
 ## 运行与构建
+
+开发、部署和全部验证命令要求 Node.js 22.13+；锁定 Wrangler 需要 Node 22+，数据库验证使用内置 SQLite。
 
 ```bash
 npm ci
@@ -70,7 +73,7 @@ npm run deploy:demo              # 纯静态演示部署（wrangler.demo.jsonc�
 
 ## 测试
 
-- Node 内置 `node:test`：core（回放数学）、analysis（图/Louvain/评分端到端 3–6 分支、事件必有来源论文）、pipeline（命名空间隔离、AI 输出严格校验、topicAffinity、癌种同义词全覆盖）、rate-limit（固定窗口计数、超限判定、fail-open、配置回退）
+- Node 内置 `node:test`：core（回放数学）、analysis（图/Louvain/评分目标 3–6 分支（稀疏数据允许更少）、事件必有来源论文）、pipeline（命名空间隔离、AI 输出严格校验、实际来源输入、开放问题失败的部分成功审计、topicAffinity、癌种同义词全覆盖）、rate-limit（固定窗口计数、超限判定、fail-open、配置回退）
 - npm test 为纯函数及替代依赖回归；npm run test:database 使用内存 SQLite 调用真实 Worker 路由，覆盖创建、并发重试和限流，不访问线上数据库或真实上游。
 
 发布检查：
@@ -103,13 +106,15 @@ npm run build
 
 ### 交互与数据约束
 
-query_hash 唯一索引控制并发去重；失败回放复用记录，由显式重试重新排队。任务更新与回放领取在同一 D1 batch 事务，失败方不改写任务。限流默认创建 5 次/小时、重试 10 次/小时，配置为正的安全整数，429 返回 Retry-After。test:database 使用 Node.js 22.13+ 内存 SQLite 调用真实 Worker 路由，不读取生产数据库或调用真实队列。
+`query_hash` 包含客户端随机 `reuseKey`，唯一索引只在同一凭据范围内控制并发去重；未提供凭据时创建独立回放。前端 `sessionStorage` 保存凭据，存储失败退回本页内存。失败回放复用记录，由显式重试重新排队。任务更新与回放领取在同一 D1 batch 事务，失败方不改写任务。限流默认创建 5 次/小时、重试 10 次/小时，配置为正的安全整数，429 返回 Retry-After。test:database 使用 Node.js 22.13+ 内存 SQLite 调用真实 Worker 路由，不读取生产数据库或调用真实队列。
 
 ### 界面维护约定
 
 前端使用 `ydchen-portfolio` 的米白 / 赤陶色视觉系统；视觉调整不得改变时间线可视化、中文文案、证据边界、Worker 路由或 D1 schema。
 
 ## 部署
+
+对外版本以 GitHub Release 为准；应用版本源为根目录 `package.json`，发布时用 `npm install --package-lock-only` 同步 `package-lock.json`。内部数据格式、模型及提示词版本独立演进，不随应用发布机械递增。
 
 - 先决：`wrangler d1 create oncoreplay-db`（回填 `database_id`）、`wrangler queues create` ×2、`wrangler secret put OPENALEX_API_KEY`（必需，缺失时部署报错）、`wrangler d1 migrations apply --remote`，然后 `npm run deploy`
 - 部署后验证 `/api/health` 返回 `bindings: {d1:true, queue:true, ai:true, openAlex:true}`
@@ -119,10 +124,11 @@ query_hash 唯一索引控制并发去重；失败回放复用记录，由显式
 
 - 外部 API 有界：OpenAlex 超时 14s/重试 2 次、并发上限 3；富化只补前 35 篇缺摘要、前 30 篇有 DOI 的
 - 输入校验：主题 3–240 字符、年份 1900–当前、maxWorks 40–500、angle/locale 白名单
-- 回放默认 `unlisted`，slug 含 7 位随机 UUID；前端提示勿输入可识别患者身份的信息；无登录、无 Cookie
+- 回放默认 `unlisted`，新建 slug 含完整随机 UUID；复用凭据不可由公开查询推导；前端提示勿输入可识别患者身份的信息；无登录、无 Cookie
 - 公开写接口限流：创建 5 次/小时、重试 10 次/小时（按 CF-Connecting-IP 的固定窗口，D1 `rate_limits` 表计数；env `RATE_LIMIT_CREATE_PER_HOUR` / `RATE_LIMIT_RETRY_PER_HOUR` 可覆盖；限流存储故障 fail-open 放行并记日志）
-- 数据保留：失败 7 天 / 成功 90 天 / 孤立论文 7 天 / 失效反馈 90 天，子表级联删除
-- AI 安全：AI 只能用输入中的 work ID，禁止发明事实；每次调用落 `ai_runs` 审计；校验失败重试 1 次后回退规则文案（`ai_generated=0`）
+- 数据保留：失败 7 天 / 成功 90 天 / 孤立论文 7 天 / 失效反馈 90 天，子表级联删除；限流原始 IP 记录超过 24 小时后在下一次清理删除，故障日志不包含 IP
+- AI 安全：AI 只能用输入中的 work ID，禁止发明事实；`ai_runs` 保存整个叙事阶段摘要（不是每次调用日志），输入哈希包含真实来源上下文、模型和独立 `NARRATIVE_VERSION`。状态为 `complete` / `partial` / `fallback`；分支命名失败全量规则回退，后续批次或问题失败时保留已通过校验的部分，未通过部分保持 `ai_generated=0`
+- AI 分支命名接收该分支的实际论文标题/年份/截断摘要，开放问题接收已选事件及其论文；ID 校验不等于自然语言事实核验，用户须回到来源复核。`Correction` 只接收针对当前论文的明确更新类型，来源日期经 `normalizeCompleteDate` 校验完整年月日后才生成事件；拒绝无效日历日，不将仅年或年月补为完整日期。70个关键节点先保留事件证据，再按评分补齐。
 - 所有用户/AI 文本经 `escapeHtml` 渲染；外链 `rel="noreferrer"`
 
 ## 标志维护约定

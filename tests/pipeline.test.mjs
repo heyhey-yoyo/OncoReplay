@@ -110,7 +110,8 @@ test('cleanupExpiredReplays deletes stuck, failed, complete, orphaned rows', asy
   };
   const result = await cleanupExpiredReplays(env, { now: new Date('2026-08-02T12:00:00.000Z') });
   assert.deepEqual(result, { failedReplaysDeleted: 1, completeReplaysDeleted: 1, orphanWorksDeleted: 1, orphanFeedbackDeleted: 2 });
-  assert.equal(calls.length, 4);
+  assert.equal(calls.length, 5);
+  assert.match(calls.shift().sql, /DELETE FROM rate_limits/);
   assert.match(calls[0].sql, /status IN \('failed','queued','processing'\)/);
   assert.match(calls[1].sql, /status = 'complete'/);
   assert.match(calls[2].sql, /NOT IN \(SELECT work_id FROM replay_works\)/);
@@ -128,4 +129,39 @@ test('expandCancerType covers every TCGA type with an OR group', async () => {
   }
   assert.equal(expandCancerType(''), '');
   assert.equal(expandCancerType('Not a real type'), 'Not a real type');
+});
+
+test('all narrative tasks receive source evidence and key nodes remain bounded',async()=>{
+  const {runNarrativeChunk,selectKeyWorkIds}=await import('../src/worker/lib/pipeline.js');
+  const works=[{id:'W1',title:'Specific KRAS experiment',abstract:'Measured pathway response',publicationYear:2020},{id:'W2',title:'Other',publicationYear:2021}];
+  const events=[{id:'E1',date:'2020-01-01',source_work_ids:['W1']}];
+  const inputs=[];const env={AI:{async run(_model,input){inputs.push(JSON.parse(input.messages[1].content));return {response:'{}'}}}};
+  await runNarrativeChunk(env,{type:'branches',locale:'zh',topic:'KRAS',works,branches:[{id:'B1',source_work_ids:['W1']}]},'fake');
+  await runNarrativeChunk(env,{type:'questions',locale:'zh',topic:'KRAS',works,events},'fake');
+  for(const input of inputs){assert.equal(input.works[0].title,works[0].title);assert.equal(input.works[0].abstract,works[0].abstract);assert.equal(input.works.length,1)}
+  assert.equal(inputs[1].events[0].id,'E1');
+  await assert.rejects(runNarrativeChunk(env,{type:'branches',locale:'zh',topic:'KRAS',works:[],branches:[{id:'B1',source_work_ids:['W1']}]},'fake'),/source evidence is missing/);
+  const many=Array.from({length:100},(_,i)=>({id:'W'+i,turningPointScore:i}));
+  const selected=selectKeyWorkIds(many,[{sourceWorkIds:['W0']}]);
+  assert.equal(selected.size,70);assert.ok(selected.has('W0'));assert.ok(selected.has('W99'));
+});
+
+test('failed questions produce a partial audit while validated event copy remains',async()=>{
+  const {narrativeStage}=await import('../src/worker/lib/pipeline.js');
+  const writes=[];
+  const db={prepare(sql){return {bind(...args){return {async first(){return sql.includes('FROM replays')?{locale:'zh',normalized_query:'KRAS'}:{filters_json:'{}'}},async all(){
+    if(sql.includes('FROM branches'))return {results:[{id:'B1',label:'规则分支',description:'规则描述',source_work_ids_json:'["W1"]'}]};
+    if(sql.includes('FROM events'))return {results:[{id:'E1',event_type:'birth',event_date:'2020-01-01',title:'规则标题',summary:'规则摘要',source_work_ids_json:'["W1"]',confidence:0.6}]};
+    return {results:[{openalex_id:'W1',title:'KRAS experiment',abstract:'Measured response',publication_year:2020,branch_id:'B1'}]};
+  },async run(){writes.push({sql,args});return{}},sql,args};}}},async batch(statements){writes.push(...statements);return[]}};
+  const ai={async run(_model,input){const payload=JSON.parse(input.messages[1].content);
+    if(payload.branches)return {response:JSON.stringify({branches:[{branch_id:'B1',label:'实验研究',description:'针对KRAS的来源研究。'}]})};
+    if(input.messages[0].content.includes('开放问题'))throw Error('questions unavailable');
+    return {response:JSON.stringify({events:[{event_id:'E1',title:'实验事件',summary:'依据所给论文的摘要。',selection_reason:'来源依据。',source_work_ids:['W1'],confidence:0.6,requires_review:true}]})};
+  }};
+  await narrativeStage({DB:db,AI:ai},{replayId:'R1'});
+  assert.ok(writes.some(x=>x.sql.startsWith('UPDATE events')));
+  const audit=writes.find(x=>x.sql.includes('INSERT INTO ai_runs'));
+  assert.equal(audit.args[6],'partial');assert.equal(audit.args[4].length,64);
+  assert.match(audit.args[7],/questions unavailable/);
 });

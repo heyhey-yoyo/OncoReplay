@@ -199,3 +199,33 @@ export function truncate(value, length = 800) {
 export function nowIso() {
   return new Date().toISOString();
 }
+
+// Keep a source calendar day only when all three components are known and valid.
+// Crossref timestamps are milliseconds; partial date-parts must not invent Jan 1.
+export function normalizeCompleteDate(value) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    if (value['date-time'] !== undefined) return normalizeCompleteDate(value['date-time']);
+    if (value['date-parts'] !== undefined) return normalizeCompleteDate(value['date-parts']?.[0]);
+    if (value.timestamp !== undefined) return normalizeCompleteDate(value.timestamp);
+    return normalizeCompleteDate(value.date);
+  }
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return null;
+    const parsed = new Date(value);
+    return Number.isFinite(parsed.getTime()) ? normalizeCompleteDate(parsed.toISOString()) : null;
+  }
+  let parts;
+  if (Array.isArray(value)) {
+    if (value.length !== 3 || !value.every(Number.isInteger)) return null;
+    parts = value;
+  } else if (typeof value === 'string') {
+    const match = /^(\d{4})-(\d{2})-(\d{2})(?:T.*)?$/.exec(value);
+    if (!match || !Number.isFinite(Date.parse(value))) return null;
+    parts = match.slice(1, 4).map(Number);
+  } else return null;
+  const [year, month, day] = parts;
+  if (year < 1 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const normalized = `${String(year).padStart(4,'0')}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  const parsed = new Date(`${normalized}T00:00:00.000Z`);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0,10) === normalized ? normalized : null;
+}

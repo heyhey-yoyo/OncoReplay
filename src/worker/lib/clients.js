@@ -4,6 +4,7 @@ import {
   htmlToText,
   mapWithConcurrency,
   normalizeDoi,
+  normalizeCompleteDate,
   reconstructAbstract,
   shortOpenAlexId,
   unique,
@@ -178,6 +179,16 @@ function normalizeUpdateType(value) {
   return text.replace(/\s+/g, '-') || 'update';
 }
 
+function dedupeCrossrefUpdates(updates, targetDoi = '') {
+  const byNotice = new Map();
+  for (const item of updates) {
+    const key = `${item.type}|${item.doi || targetDoi}|${item.direction}`;
+    const previous = byNotice.get(key);
+    if (!previous || (!previous.date && item.date)) byNotice.set(key, item);
+  }
+  return [...byNotice.values()];
+}
+
 function collectCrossrefUpdates(message, targetDoi) {
   const updates = [];
   for (const item of message?.['update-to'] || []) {
@@ -185,7 +196,7 @@ function collectCrossrefUpdates(message, targetDoi) {
       type: normalizeUpdateType(item?.type || item?.label),
       label: item?.label || item?.type || 'Update',
       doi: normalizeDoi(item?.DOI),
-      date: item?.updated?.['date-time'] || item?.updated?.date?.['date-time'] || null,
+      date: normalizeCompleteDate(item?.updated),
       source: item?.source || 'publisher',
       direction: 'updates',
     });
@@ -195,7 +206,7 @@ function collectCrossrefUpdates(message, targetDoi) {
       type: normalizeUpdateType(item?.type || item?.label),
       label: item?.label || item?.type || 'Update',
       doi: normalizeDoi(item?.DOI),
-      date: item?.updated?.['date-time'] || item?.updated?.date?.['date-time'] || null,
+      date: normalizeCompleteDate(item?.updated),
       source: item?.source || 'publisher',
       direction: 'updated-by',
     });
@@ -215,11 +226,7 @@ function collectCrossrefUpdates(message, targetDoi) {
       });
     }
   }
-  const normalizedTarget = normalizeDoi(targetDoi);
-  return updates.filter((item, index, all) => {
-    const key = `${item.type}|${item.doi || normalizedTarget}|${item.direction}`;
-    return all.findIndex((candidate) => `${candidate.type}|${candidate.doi || normalizedTarget}|${candidate.direction}` === key) === index;
-  });
+  return dedupeCrossrefUpdates(updates, normalizeDoi(targetDoi));
 }
 
 export async function fetchCrossrefUpdates(env, work) {
@@ -246,13 +253,14 @@ export async function fetchCrossrefUpdates(env, work) {
     const payload = await fetchJson(listUrl, { timeoutMs: 12000, retries: 1, headers });
     for (const notice of payload?.message?.items || []) {
       const noticeUpdates = collectCrossrefUpdates(notice, work.doi);
-      if (noticeUpdates.length) updates.push(...noticeUpdates);
+      const targeted = noticeUpdates.filter((item) => item.direction === 'updates' && item.doi === normalizeDoi(work.doi));
+      if (targeted.length) updates.push(...targeted.map((item) => ({ ...item, date: item.date || normalizeCompleteDate(notice.published), doi: normalizeDoi(notice.DOI), direction: 'updated-by' })));
       else {
         updates.push({
-          type: normalizeUpdateType(notice?.subtype || notice?.type || notice?.title?.[0]),
+          type: normalizeUpdateType(notice?.subtype || notice?.type),
           label: notice?.title?.[0] || notice?.subtype || 'Update notice',
           doi: normalizeDoi(notice?.DOI),
-          date: notice?.published?.['date-parts']?.[0]?.join('-') || null,
+          date: normalizeCompleteDate(notice?.published),
           source: notice?.source || 'crossref',
           direction: 'notice',
         });
@@ -262,8 +270,5 @@ export async function fetchCrossrefUpdates(env, work) {
     if (![400, 404].includes(error?.status)) throw error;
   }
 
-  return updates.filter((item, index, all) => {
-    const key = `${item.type}|${item.doi || ''}|${item.label}`;
-    return all.findIndex((candidate) => `${candidate.type}|${candidate.doi || ''}|${candidate.label}` === key) === index;
-  });
+  return dedupeCrossrefUpdates(updates);
 }

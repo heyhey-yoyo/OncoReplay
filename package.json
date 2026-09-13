@@ -1,6 +1,6 @@
 {
   "name": "oncoreplay",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "description": "A source-grounded bilingual oncology research timeline generator for Cloudflare Workers.",
@@ -24,7 +24,7 @@
     "undici": "7.29.0"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13.0"
   },
   "license": "MIT"
 }

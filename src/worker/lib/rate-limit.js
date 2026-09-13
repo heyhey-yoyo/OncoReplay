@@ -42,7 +42,7 @@ export async function checkRateLimit(env, key, limit, now = new Date()) {
     return { allowed: count <= limit, count, retryAfterSeconds };
   } catch (cause) {
     // 限流存储失败不误伤正常用户:记结构化日志供排查,直接放行。
-    console.log(JSON.stringify({ level: 'warn', event: 'rate_limit_store_failed', key, message: String(cause?.message || cause) }));
+    console.log(JSON.stringify({ level: 'warn', event: 'rate_limit_store_failed', message: 'rate limit storage unavailable' }));
     return { allowed: true, count: 0, retryAfterSeconds: 0 };
   }
 }

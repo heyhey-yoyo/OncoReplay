@@ -5,7 +5,7 @@ import {
   fetchWorksCiting,
   searchOpenAlex,
 } from './clients.js';
-import { analyzeReplay, makeWorkText, publicWorkType } from './analysis.js';
+import { analyzeReplay, isTargetedCorrection, makeWorkText, publicWorkType } from './analysis.js';
 import { expandCancerType } from './cancer-types.js';
 import {
   chunk,
@@ -121,6 +121,7 @@ export function cleanupPolicy({ now = new Date(), failedDays = 7, completeDays =
 export async function cleanupExpiredReplays(env, options = {}) {
   if (!env.DB) return { failedReplaysDeleted: 0, completeReplaysDeleted: 0, orphanWorksDeleted: 0, orphanFeedbackDeleted: 0 };
   const cutoffs = cleanupPolicy(options);
+  await env.DB.prepare('DELETE FROM rate_limits WHERE window_start < ?').bind(new Date((options.now || new Date()).getTime() - 24 * 3600_000).toISOString()).run();
   const run = async (sql, ...params) => {
     const result = await env.DB.prepare(sql).bind(...params).run();
     return result?.meta?.changes ?? 0;
@@ -283,7 +284,7 @@ async function enrichStage(env, body) {
   for (const { work, updates: workUpdates } of updates) {
     if (!workUpdates.length) continue;
     statements.push(env.DB.prepare(`UPDATE works SET update_status_json=?,is_retracted=CASE WHEN ? THEN 1 ELSE is_retracted END,fetched_at=? WHERE openalex_id=?`)
-      .bind(JSON.stringify(workUpdates), workUpdates.some((item) => item.type === 'retraction') ? 1 : 0, nowIso(), work.id));
+      .bind(JSON.stringify(workUpdates), workUpdates.some((item) => item.type === 'retraction' && isTargetedCorrection(item)) ? 1 : 0, nowIso(), work.id));
   }
   await batchStatements(env, statements);
 }
@@ -316,8 +317,7 @@ async function buildTimelineStage(env, body) {
   ]);
   await batchStatements(env, analysis.branches.map((branch) => env.DB.prepare(`INSERT INTO branches (id,replay_id,label,description,color_token,sort_order,source_work_ids_json,ai_generated) VALUES (?,?,?,?,?,?,?,0)`)
     .bind(branch.id, body.replayId, branch.label, branch.description, branch.colorToken, branch.sortOrder, JSON.stringify(branch.sourceWorkIds))));
-  const topIds = new Set([...analysis.scoredWorks].sort((a, b) => b.turningPointScore - a.turningPointScore).slice(0, 70).map((work) => work.id));
-  for (const event of analysis.events) for (const workId of event.sourceWorkIds) topIds.add(workId);
+  const topIds = selectKeyWorkIds(analysis.scoredWorks, analysis.events);
   await batchStatements(env, analysis.scoredWorks.map((work) => env.DB.prepare(`UPDATE replay_works SET relevance_score=?,turning_point_score=?,branch_id=?,is_key_work=?,selection_reasons_json=?,analysis_json=? WHERE replay_id=? AND work_id=?`)
     .bind(work.relevanceScore, work.turningPointScore, work.branchId, topIds.has(work.id) ? 1 : 0, JSON.stringify(work.selectionReasons || []), JSON.stringify({ normalizedImpact: work.normalizedImpact, debateSignal: work.debateSignal, momentum: work.momentum, bridgeScore: work.bridgeScore, clinicalSignal: work.clinicalSignal, challengeSignal: work.challengeSignal, revivalSignal: work.revivalSignal }), body.replayId, work.id)));
   await batchStatements(env, analysis.events.map((event) => env.DB.prepare(`INSERT INTO events (id,replay_id,event_type,event_date,title,summary,selection_reason,confidence,requires_review,source_work_ids_json,metrics_json,sort_order,ai_generated) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,0)`)
@@ -488,10 +488,11 @@ async function runNarrativeAI(env, narrative, priorError = '') {
   return { model, payload: validateNarrative(parseAiResponse(result), narrative.branches, narrative.events, narrative.works) };
 }
 
+const NARRATIVE_VERSION = 'source-context-v2';
 const AI_MODEL_DEFAULT = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 
-async function logAiRun(env, runId, replayId, model, status, failures, output) {
-  const inputHash = await sha256({ status, failures, ...(output ? { sample: output.branches?.[0] || output.events?.[0] } : {}) });
+async function logAiRun(env, runId, replayId, model, status, failures, output, input) {
+  const inputHash = await sha256({ model, promptVersion: NARRATIVE_VERSION, input });
   await env.DB.prepare(`INSERT INTO ai_runs (id,replay_id,task_type,model,input_hash,output_json,status,validation_errors_json,created_at) VALUES (?,?,?,?,?,?,?,?,?)`)
     .bind(runId, replayId, 'GENERATE_NARRATIVE', model, inputHash, output ? JSON.stringify(output) : null, status, JSON.stringify(failures.slice(0, 5)), nowIso()).run();
 }
@@ -520,21 +521,26 @@ async function withRetry(run, failures, attempts = 2) {
   return null;
 }
 
-async function runNarrativeChunk(env, chunk, model, priorError = '') {
+export async function runNarrativeChunk(env, chunk, model, priorError = '') {
   const { type, locale, topic } = chunk;
   const system = locale === 'en'
     ? `You write neutral, source-grounded oncology research timeline copy. Use only supplied work IDs. Never invent facts, identifiers, consensus, causality, efficacy, or misconduct. Rewrite everything in your own words — never echo or rephrase supplied scaffolding. ${chunkInstruction(type, locale)} Return only JSON matching the schema.`
     : `你负责撰写中性、可追溯的肿瘤研究时间线叙事。只能使用输入中的 work ID，不得添加外部事实、论文、标识符、共识、因果、疗效结论或学术不端推断。必须用自己的话撰写，禁止复述或回显输入内容。${chunkInstruction(type, locale)}仅返回符合 Schema 的 JSON。`;
-  const relevantIds = new Set(chunk.events?.flatMap((event) => event.source_work_ids) || []);
+  const relevantIds = new Set(type === 'branches'
+    ? (chunk.branches || []).flatMap((branch) => branch.source_work_ids)
+    : (chunk.events || []).flatMap((event) => event.source_work_ids));
   const works = chunk.works ? chunk.works.filter((work) => relevantIds.has(work.id)).map((work) => ({
     id: work.id, year: work.publicationYear, title: work.title, abstract: truncate(work.abstract || '摘要缺失', 500),
     branch_id: work.branchId, cited_by_count: work.citedByCount, update_status: work.updateStatus,
   })) : [];
+  if (!works.length || [...relevantIds].some((id) => !works.some((work) => work.id === id && work.title))) {
+    throw new Error('Narrative source evidence is missing; use the rule-generated copy.');
+  }
   const user = JSON.stringify({
     language: locale === 'en' ? 'English' : '简体中文',
     topic,
-    ...(type === 'branches' ? { branches: chunk.branches } : {}),
-    ...(type === 'events' ? { events: chunk.events, works } : {}),
+    ...(type === 'branches' ? { branches: chunk.branches, works } : {}),
+    ...(['events', 'questions'].includes(type) ? { events: chunk.events, works } : {}),
     prior_validation_error: priorError || undefined,
   });
   const schema = type === 'branches' ? BRANCHES_SCHEMA : type === 'events' ? EVENTS_SCHEMA : QUESTIONS_SCHEMA;
@@ -547,7 +553,7 @@ async function runNarrativeChunk(env, chunk, model, priorError = '') {
   return parseAiResponse(result);
 }
 
-async function narrativeStage(env, body) {
+export async function narrativeStage(env, body) {
   if (!env.AI) return;
   const narrative = await loadNarrativeContext(env, body.replayId);
   const locale = narrative.context.replay.locale || 'zh';
@@ -559,13 +565,13 @@ async function narrativeStage(env, body) {
 
   const branchOutput = await withRetry(async (prior) => {
     const payload = await runNarrativeChunk(env, {
-      type: 'branches', locale, topic,
+      type: 'branches', locale, topic, works,
       branches: narrative.branches.map((branch) => ({ id: branch.id, source_work_ids: branch.sourceWorkIds })),
     }, model, prior);
     return validateChunk(payload, 'branches', [], works, narrative.branches.map((branch) => branch.id));
   }, failures);
   if (!branchOutput) {
-    await logAiRun(env, runId, body.replayId, model, 'fallback', failures, null);
+    await logAiRun(env, runId, body.replayId, model, 'fallback', failures, null, narrative);
     return;
   }
 
@@ -584,7 +590,7 @@ async function narrativeStage(env, body) {
   }
 
   const questionsOutput = await withRetry(async (prior) => {
-    const payload = await runNarrativeChunk(env, { type: 'questions', locale, topic }, model, prior);
+    const payload = await runNarrativeChunk(env, { type: 'questions', locale, topic, works, events: narrative.events.map((event) => ({ id: event.id, date: event.eventDate, source_work_ids: event.sourceWorkIds, summary: event.summary })) }, model, prior);
     return validateChunk(payload, 'questions', [], works, []);
   }, failures);
 
@@ -595,7 +601,7 @@ async function narrativeStage(env, body) {
   if (questionsOutput && questionsOutput.length) statements.push(env.DB.prepare('UPDATE replays SET open_questions_json=? WHERE id=?').bind(JSON.stringify(questionsOutput.slice(0, 5)), body.replayId));
   await batchStatements(env, statements);
 
-  await logAiRun(env, runId, body.replayId, model, eventsOk ? 'complete' : 'partial', failures, { branches: branchOutput, events: eventOutput, open_questions: questionsOutput || [] });
+  await logAiRun(env, runId, body.replayId, model, eventsOk && questionsOutput ? 'complete' : 'partial', failures, { branches: branchOutput, events: eventOutput, open_questions: questionsOutput || [] }, narrative);
 }
 
 async function finalizeStage(env, body) {
@@ -705,4 +711,14 @@ export async function getReplayPayload(env, slug) {
     events,
     openQuestions: safeJsonParse(replay.open_questions_json, []),
   };
+}
+
+export function selectKeyWorkIds(works, events, maxNodes = 70) {
+  const selected = new Set(events.flatMap((event) => event.sourceWorkIds));
+  if (selected.size > maxNodes) throw new Error('Event evidence exceeds the key-node limit.');
+  for (const work of [...works].sort((a, b) => b.turningPointScore - a.turningPointScore)) {
+    if (selected.size >= maxNodes) break;
+    selected.add(work.id);
+  }
+  return selected;
 }

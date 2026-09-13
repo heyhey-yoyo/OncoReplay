@@ -62,3 +62,53 @@ test('full analysis produces readable branches and events', () => {
   assert.ok(result.events.every((event) => event.sourceWorkIds.length >= 1));
   assert.ok(result.scoredWorks.every((item) => item.branchId));
 });
+
+test('correction events require targeted structured status and actual update date',()=>{
+  const make=updates=>analyzeReplay('KRAS',[
+    work('W1',2010,'KRAS',[],{updateStatus:updates}),work('W2',2012,'KRAS'),work('W3',2014,'KRAS')],[]).events.filter(e=>e.eventType==='correction');
+  assert.equal(make([{type:'is-preprint-of',direction:'relation',date:'2025-03-04'}]).length,0);
+  assert.equal(make([{type:'retraction',direction:'updates',date:'2025-03-04'}]).length,0);
+  assert.equal(make([{type:'correction',direction:'updated-by',date:null}]).length,0);
+  const events=make([{type:'correction',direction:'updated-by',date:'2025-03-04'}]);
+  assert.equal(events.length,1);assert.equal(events[0].eventDate,'2025-03-04');assert.equal(events[0].year,2025);
+});
+
+test('actual Crossref fetch path normalizes complete dates and never invents partial or invalid dates', async () => {
+  const {fetchCrossrefUpdates}=await import('../src/worker/lib/clients.js');
+  const target='10.1234/target', noticeDoi='10.1234/notice';
+  const dateCases=[
+    [{ 'date-parts': [[2025,1,2]] },'2025-01-02'],
+    [{ 'date-time': '2025-01-02T12:34:56Z' },'2025-01-02'],
+    [{ timestamp: Date.UTC(2025,0,2,12) },'2025-01-02'],
+    [{ date: { 'date-time': '2025-01-02T12:34:56Z' } },'2025-01-02'],
+    [{ 'date-parts': [[2024,2,29]] },'2024-02-29'],
+    [{ 'date-parts': [[2025]] },null],
+    [{ 'date-parts': [[2025,1]] },null],
+    [{ 'date-parts': [[2025,2,29]] },null],
+    [{ 'date-time': '2025-02-30T00:00:00Z' },null],
+    [{ 'date-parts': [[2025,13,2]] },null],
+  ];
+  const originalFetch=globalThis.fetch;
+  try {
+    for(const [date,expected] of dateCases){
+      for(const route of ['metadata-updated-by','targeted-notice','published-notice']){
+        const update={type:'correction',DOI:route==='metadata-updated-by'?noticeDoi:target,updated:date};
+        const metadata=route==='metadata-updated-by'?{'updated-by':[update]}:{};
+        const notice={DOI:noticeDoi,subtype:'correction',published:date,...(route==='targeted-notice'?{'update-to':[update]}:{})};
+        globalThis.fetch=async input=>new Response(JSON.stringify({message:new URL(input).pathname==='/works'?{items:route==='metadata-updated-by'?[]:[notice]}:metadata}),{headers:{'content-type':'application/json'}});
+        const updates=await fetchCrossrefUpdates({}, {doi:target});
+        assert.equal(updates[0].date,expected,`${route} ${JSON.stringify(date)}`);
+        const result=analyzeReplay('KRAS',[work('W1',2010,'KRAS',[],{updateStatus:updates}),work('W2',2012,'KRAS'),work('W3',2014,'KRAS')],[]);
+        const events=result.events.filter(event=>event.eventType==='correction');
+        assert.equal(events.length,expected?1:0);
+        if(expected)assert.equal(events[0].eventDate,expected);
+      }
+    }
+    // A later complete notice date must survive an earlier undated metadata relation.
+    globalThis.fetch=async input=>new Response(JSON.stringify({message:new URL(input).pathname==='/works'
+      ? {items:[{DOI:noticeDoi,subtype:'correction',published:{'date-parts':[[2025,1,2]]},'update-to':[{type:'correction',DOI:target}]}]}
+      : {'updated-by':[{type:'correction',DOI:noticeDoi}]}}),{headers:{'content-type':'application/json'}});
+    const deduped=await fetchCrossrefUpdates({}, {doi:target});
+    assert.equal(deduped.length,1);assert.equal(deduped[0].date,'2025-01-02');
+  } finally {globalThis.fetch=originalFetch;}
+});

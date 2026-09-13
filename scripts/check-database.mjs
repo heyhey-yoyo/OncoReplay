@@ -29,7 +29,7 @@ console.log('PASS migration: preferred complete replay, cascade, idempotence, un
 const {sql,DB}=db();let sends=0,pending=[];
 const env={DB,REPLAY_QUEUE:{async send(){sends++}},OPENALEX_API_KEY:'local-test-only',RATE_LIMIT_CREATE_PER_HOUR:5,RATE_LIMIT_RETRY_PER_HOUR:10};
 const ctx={waitUntil(p){pending.push(p)}};
-function req(path='/api/replays',ip='127.0.0.1'){return new Request('https://local.test'+path,{method:'POST',headers:{'content-type':'application/json','cf-connecting-ip':ip},body:JSON.stringify({topic:'KRAS testing'})})}
+function req(path='/api/replays',ip='127.0.0.1'){return new Request('https://local.test'+path,{method:'POST',headers:{'content-type':'application/json','cf-connecting-ip':ip},body:JSON.stringify({topic:'KRAS testing',reuseKey:'a'.repeat(32)})})}
 async function call(path,ip){const response=await worker.fetch(req(path,ip),env,ctx);await Promise.all(pending);pending=[];return response}
 const concurrent=await Promise.all([call(),call()]);const bodies=await Promise.all(concurrent.map(r=>r.json()));
 assert.equal(bodies[0].slug,bodies[1].slug);assert.equal(sends,1);assert.equal(sql.prepare('SELECT count(*) n FROM replays').get().n,1);
@@ -47,3 +47,21 @@ const fresh=db();const t=new Date('2026-09-12T15:59:59Z');assert.equal((await ch
 const quota={DB:fresh.DB};assert.equal((await checkRateLimit(quota,'same',1,t)).allowed,true);assert.equal((await checkRateLimit(quota,'same',1,t)).allowed,false);assert.equal((await checkRateLimit(quota,'same',1,new Date('2026-09-12T16:00:00Z'))).allowed,true);
 for(const value of ['1.5','5garbage',0,-1,'Infinity'])assert.equal(resolveRateLimit({RATE_LIMIT_CREATE_PER_HOUR:value},'RATE_LIMIT_CREATE_PER_HOUR'),5);
 console.log('PASS real SQL fixed-window rollover and strict positive integer configuration');
+
+const outsiderRequest=new Request('https://local.test/api/replays',{method:'POST',headers:{'content-type':'application/json','cf-connecting-ip':'192.0.2.55'},body:JSON.stringify({topic:'KRAS testing',reuseKey:'b'.repeat(32)})});
+const outsider=await worker.fetch(outsiderRequest,env,ctx);const outsiderBody=await outsider.json();
+assert.notEqual(outsiderBody.slug,slug);assert.equal(outsider.status,202);
+const noCredentialSlugs=[];
+for(let i=0;i<2;i++){
+ const request=new Request('https://local.test/api/replays',{method:'POST',headers:{'content-type':'application/json','cf-connecting-ip':'192.0.2.56'},body:JSON.stringify({topic:'KRAS testing'})});
+ const response=await worker.fetch(request,env,ctx);assert.equal(response.status,202);
+ noCredentialSlugs.push((await response.json()).slug);
+ await Promise.all(pending);pending=[];
+}
+assert.equal(new Set([slug,outsiderBody.slug,...noCredentialSlugs]).size,4);
+console.log('PASS same query without reuse credentials creates two independent replays');
+const {cleanupExpiredReplays}=await import('../src/worker/lib/pipeline.js');
+sql.prepare('INSERT INTO rate_limits(key,window_start,count) VALUES (?,?,1)').run('old-raw-ip','2000-01-01T00:00:00.000Z');
+await cleanupExpiredReplays(env);
+assert.equal(sql.prepare("SELECT count(*) n FROM rate_limits WHERE key='old-raw-ip'").get().n,0);
+console.log('PASS unlisted query isolation and old IP deletion on real SQLite');
