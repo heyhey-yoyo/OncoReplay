@@ -1,4 +1,4 @@
-# OncoReplay（肿瘤研究时光机） — 项目说明（供 AI 编程代理阅读）
+# OncoReplay｜肿瘤研究时光机 — 项目说明（供 AI 编程代理阅读）
 
 本文件供 AI 编码代理使用。修改代码前请先阅读本文件。
 
@@ -31,14 +31,14 @@
 | `public/core.mjs` | 前端纯函数：clamp/yearProgress/playbackStep/escapeHtml 等 |
 | `public/data/kras-g12d.json` | 内置 KRAS G12D 交互演示数据 |
 | `public/project-mark.svg` | 页面标志与 favicon 共用图形 |
-| `public/favicon.svg` / `public/robots.txt` | favicon 图标与抓取规则 |
+| `public/robots.txt` | 抓取规则 |
 | `src/worker/index.js` | Worker 入口：路由（/api/health、/api/query/preview、/api/replays）、queue()、scheduled()、输入校验、按浏览器复用凭据隔离的 query_hash 去重、公开写接口限流 |
 | `src/worker/lib/pipeline.js` | 五阶段状态机、候选扩展、D1 批量写入、AI Schema 校验、清理策略、回放组装 |
 | `src/worker/lib/analysis.js` | 加权图、Louvain、relevance/turning-point 评分、7 类规则事件、中英规则文案 |
 | `src/worker/lib/clients.js` | OpenAlex / Europe PMC / Crossref 客户端 |
 | `src/worker/lib/utils.js` | tokenize、余弦/Jaccard、fetchJson 重试退避、mapWithConcurrency |
 | `src/worker/lib/rate-limit.js` | 公开写接口固定窗口限流（D1 `rate_limits` 计数、fail-open、env 阈值可覆盖） |
-| `src/worker/lib/cancer-types.js` | 34 个 TCGA 癌种 → OpenAlex 同义词组 |
+| `src/worker/lib/cancer-types.js` | 33 个 TCGA 癌种 + Pan-cancer → OpenAlex 同义词组 |
 | `migrations/` | 0001_init.sql（10 表 + 9 索引）、0002_full_pipeline.sql、0003_query_hash_unique.sql、0004_rate_limits.sql |
 | `scripts/build.mjs` | 构建：`public/` → `dist/` |
 | `scripts/check-database.mjs` | 内存 SQLite：真实路由、并发、隐私隔离及限流清理验证 |
@@ -48,9 +48,10 @@
 | `wrangler.demo.jsonc` | 无后端静态演示配置（`deploy:demo`） |
 | `SETUP_ZH.md` | 部署/升级/排错权威文档（排查「卡在 queued」等问题） |
 | `package.json` / `package-lock.json` | npm 脚本与锁定依赖 |
-| `.dev.vars.example` | 本地 secrets 模板（`OPENALEX_API_KEY` 等） |
+| `.dev.vars.example` | 本地 secrets 模板（`OPENALEX_API_KEY`） |
 | `LICENSE` | MIT 许可证 |
 | `.gitignore` | Git 忽略规则 |
+| `README.md` / `AGENTS.md` | 用户向项目说明与 AI 代理维护说明 |
 
 ## 运行与构建
 

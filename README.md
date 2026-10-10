@@ -62,7 +62,7 @@ npm exec -- wrangler d1 migrations apply oncoreplay-db --remote
 npm run deploy
 ```
 
-创建 D1 后，把命令返回的 `database_id` 写入 `wrangler.jsonc`。同时把 `CONTACT_EMAIL` 和 `CROSSREF_MAILTO` 改为你自己的联系邮箱。
+创建 D1 后，把命令返回的 `database_id` 写入 `wrangler.jsonc`。如需配置联系邮箱，在 `wrangler.jsonc` 增补 vars 或在部署环境把 `CONTACT_EMAIL` 和 `CROSSREF_MAILTO` 配置为你自己的联系邮箱。
 
 部署后访问 `https://oncoreplay.<你的子域>.workers.dev/api/health`，预期四个 binding 均为 `true`。
 
