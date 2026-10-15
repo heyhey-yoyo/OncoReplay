@@ -119,7 +119,7 @@ npm run build
 
 - 先决：`wrangler d1 create oncoreplay-db`（回填 `database_id`）、`wrangler queues create` ×2、`wrangler secret put OPENALEX_API_KEY`（必需，缺失时部署报错）、`wrangler d1 migrations apply --remote`，然后 `npm run deploy`
 - 部署后验证 `/api/health` 返回 `bindings: {d1:true, queue:true, ai:true, openAlex:true}`
-- 日常迭代推送 `main` 分支经 Cloudflare Git 集成自动构建部署；首次资源创建与排障用上文手动步骤；`wrangler.demo.jsonc` 提供无后端静态演示
+- 日常推送 `main` 分支经 Cloudflare Git 集成自动构建部署；首次资源创建与排障用上文手动步骤；`wrangler.demo.jsonc` 提供无后端静态演示
 
 ## 安全与数据注意事项
 
@@ -129,7 +129,7 @@ npm run build
 - 公开写接口限流：创建 5 次/小时、重试 10 次/小时（按 CF-Connecting-IP 的固定窗口，D1 `rate_limits` 表计数；env `RATE_LIMIT_CREATE_PER_HOUR` / `RATE_LIMIT_RETRY_PER_HOUR` 可覆盖；限流存储故障 fail-open 放行并记日志）
 - 数据保留：失败 7 天 / 成功 90 天 / 孤立论文 7 天 / 失效反馈 90 天，子表级联删除；限流原始 IP 记录超过 24 小时后在下一次清理删除，故障日志不包含 IP
 - AI 安全：AI 只能用输入中的 work ID，禁止发明事实；`ai_runs` 保存整个叙事阶段摘要（不是每次调用日志），输入哈希包含真实来源上下文、模型和独立 `NARRATIVE_VERSION`。状态为 `complete` / `partial` / `fallback`；分支命名失败全量规则回退，后续批次或问题失败时保留已通过校验的部分，未通过部分保持 `ai_generated=0`
-- AI 分支命名接收该分支的实际论文标题/年份/截断摘要，开放问题接收已选事件及其论文；ID 校验不等于自然语言事实核验，用户须回到来源复核。`Correction` 只接收针对当前论文的明确更新类型，来源日期经 `normalizeCompleteDate` 校验完整年月日后才生成事件；拒绝无效日历日，不将仅年或年月补为完整日期。70个关键节点先保留事件证据，再按评分补齐。
+- AI 分支命名接收该分支的实际论文标题/年份/截断摘要，开放问题接收已选事件及其论文；ID 校验不等于自然语言事实核验，用户须回到来源复核。`Correction` 只接收针对当前论文的明确更新类型，来源日期经 `normalizeCompleteDate` 校验完整年月日后才生成事件；拒绝无效日历日，不将仅年或年月补为完整日期。70 个关键节点先保留事件证据，再按评分补齐。
 - 所有用户/AI 文本经 `escapeHtml` 渲染；外链 `rel="noreferrer"`
 
 ## 标志维护约定
