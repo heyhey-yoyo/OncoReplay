@@ -93,7 +93,7 @@ npm run build
 - 评分公式在 `analysis.js` 的 `scoreWorks()`（relevance）与 turning-point 评分；候选排序在 `pipeline.js` 的 `candidatePriority`
 - SQL 全部手写参数绑定（`.bind()`），批量写用 `env.DB.batch`（75 条/批）
 - Worker 错误统一 `{error: {code, message, requestId}}`，响应头带 `x-request-id`；fatal 错误不重试，其余指数退避
-- ESM、中文注释（解释「为什么」）、数值取整走 `core.mjs` 纯函数
+- ESM、中文注释（解释「为什么」）、数值钳制与回放数学走 `core.mjs` 纯函数
 
 ### 品牌与排版
 
